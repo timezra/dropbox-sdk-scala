@@ -1,0 +1,24 @@
+# Maven generated files #
+######################
+target/
+
+# Scala generated files #
+######################
+.cache
+
+# Eclipse generated files #
+######################
+.settings/
+.classpath
+.project
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
