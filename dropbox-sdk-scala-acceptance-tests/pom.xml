@@ -1,0 +1,121 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>timezra.dropbox</groupId>
+    <artifactId>dropbox-sdk-scala-acceptance-tests</artifactId>
+    <packaging>jar</packaging>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>Dropbox Scala SDK Acceptance Tests</name>
+    <url>https://github.com/timezra/dropbox-sdk-scala</url>
+
+    <licenses>
+        <license>
+            <name>MIT</name>
+            <url>LICENSE</url>
+            <distribution>repo</distribution>
+            <comments>
+              The MIT License is a free software license originating
+                  at the Massachusetts Institute of Technology (MIT), used
+                  by the MIT X Consortium.
+            </comments>
+        </license>
+    </licenses>
+
+    <description>
+        A Scala library to access Dropbox's HTTP-based Core API. It is MIT licensed. These are its acceptance tests.
+    </description>
+
+    <organization>
+        <name>SolutionsIQ</name>
+        <url>http://www.solutionsiq.com/</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <id>timezra</id>
+            <name>Tim Myer</name>
+            <email>TMyer@SolutionsIQ.com</email>
+            <url>http://github.com/timezra</url>
+            <organization>SolutionsIQ</organization>
+            <organizationUrl>http://www.solutionsiq.com/</organizationUrl>
+            <roles>
+                <role>programmer</role>
+            </roles>
+            <timezone>-8</timezone>
+        </developer>
+    </developers>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
+        <scala.tools.version>2.10</scala.tools.version>
+        <maven.scala.plugin.version>2.15.2</maven.scala.plugin.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>timezra.dropbox</groupId>
+            <artifactId>dropbox-sdk-scala</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${scala.tools.version}</artifactId>
+            <version>2.0</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <sourceDirectory>src/main/scala</sourceDirectory>
+        <testSourceDirectory>src/test/scala</testSourceDirectory>
+        <plugins>
+            <plugin>
+                <groupId>org.scala-tools</groupId>
+                <artifactId>maven-scala-plugin</artifactId>
+                <version>${maven.scala.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>testCompile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <sourceDir>src/main/scala</sourceDir>
+                    <jvmArgs>
+                        <jvmArg>-Xms512m</jvmArg>
+                        <jvmArg>-Xmx1024m</jvmArg>
+                    </jvmArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.16</version>
+                <configuration>
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+                <version>1.0-RC2</version>
+                <configuration>
+                    <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+                    <junitxml>.</junitxml>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
