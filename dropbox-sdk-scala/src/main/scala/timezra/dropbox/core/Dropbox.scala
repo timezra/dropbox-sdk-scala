@@ -11,6 +11,13 @@ object AccountInfoJsonProtocol extends DefaultJsonProtocol {
   implicit def accountInfoFormat = jsonFormat6(AccountInfo)
 }
 
+object ContentTypes {
+  import spray.http.MediaType
+  import spray.http.MediaTypes
+  val `text/javascript` = MediaType.custom("text", "javascript", true, true)
+  MediaTypes.register(`text/javascript`)
+}
+
 object Dropbox {
   def apply(clientIdentifier: String, accessToken: String): Dropbox = new Dropbox(clientIdentifier, accessToken)
 }
@@ -21,16 +28,11 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
   import akka.actor.ActorSystem
   import akka.io.IO
   import spray.can.Http
-  import spray.http.MediaType
-  import spray.http.MediaTypes
   import scala.concurrent.Future
   import scala.concurrent.duration.DurationInt
 
   implicit val system = ActorSystem("dropbox-sdk-scala")
   import system.dispatcher
-
-  val `text/javascript` = MediaType.custom("text", "javascript", true, true)
-  MediaTypes.register(`text/javascript`)
 
   def accountInfo(actorRef: ActorRef = IO(Http))(implicit timeout: Timeout = 60.seconds): Future[AccountInfo] = {
     import spray.client.pipelining._
@@ -41,7 +43,7 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     import spray.httpx.unmarshalling.Unmarshaller
     import spray.http.HttpEntity.NonEmpty
     import spray.http.HttpCharsets
-    implicit def sprayJsonUnmarshaller[T: RootJsonReader] = Unmarshaller[T](`text/javascript`) {
+    implicit def sprayJsonUnmarshaller[T: RootJsonReader] = Unmarshaller[T](ContentTypes.`text/javascript`) {
       case x: NonEmpty ⇒
         val json = JsonParser(x.asString(defaultCharset = HttpCharsets.`UTF-8`))
         jsonReader[T].read(json)

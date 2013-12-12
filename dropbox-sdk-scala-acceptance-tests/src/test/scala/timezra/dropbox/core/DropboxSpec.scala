@@ -1,15 +1,14 @@
 package timezra.dropbox.core
 
-import org.scalatest.FeatureSpec
-import org.scalatest.GivenWhenThen
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import com.typesafe.config.ConfigFactory
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
+import org.junit.runner.RunWith
 import org.scalatest.BeforeAndAfter
+import org.scalatest.FeatureSpec
+import org.scalatest.GivenWhenThen
+import org.scalatest.junit.JUnitRunner
 import org.scalatest.Matchers
-import Matchers._
+import com.typesafe.config.ConfigFactory
 
 @RunWith(classOf[JUnitRunner])
 class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter with Matchers {
