@@ -1,4 +1,15 @@
 ---
 language: scala
-script: mvn install
+script: mvn -DclientIdentifier=$CLIENT_IDENTIFIER -DaccessToken=$ACCESS_TOKEN install
+env:
+  global:
+  - secure: ! 'a5wreHS+z/m556JQ7OrYkoAOfS5UElpkGrAB6C7e0EiSzRBgM012HvYlQoNm
 
+      UKSwyt9cYhjF9VsnOOiLri5GRny7W35v8WsBm4VPTUeCSDEhl+GVm5tmTW1H
+
+      0QlAZe9RxfMF1Vn75t7NTRB+aRLjUECWp8ysneFzgYSdp/iQH4E='
+  - secure: ! 'YLazRkGWATA+RYG8k/lUIy+Qh/1xPhB2c4ZVFbSHCEZaola8h/vXb138CqQA
+
+      OOCOWHeqNMtrnz1W7rZkYp0sFQt7zBrhGH7ZSH/3b7wWfHy6Il34tuGnLM29
+
+      1OeyzsdnowyTBZe80Uzan2iEJkPQFr/yKZJCzzEyAb1tyxGKUwE='
