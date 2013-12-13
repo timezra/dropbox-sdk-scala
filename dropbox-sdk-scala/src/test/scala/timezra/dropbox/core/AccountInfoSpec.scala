@@ -18,6 +18,8 @@ import spray.http.HttpHeaders.RawHeader
 import spray.http.HttpRequest
 import spray.http.HttpResponse
 import spray.http.parser.HttpParser
+import spray.http.StatusCodes
+import spray.httpx.UnsuccessfulResponseException
 
 @RunWith(classOf[JUnitRunner])
 class AccountInfoSpec(_system: ActorSystem) extends TestKit(_system) with FunSpecLike with Matchers with BeforeAndAfterAll {
@@ -51,33 +53,39 @@ class AccountInfoSpec(_system: ActorSystem) extends TestKit(_system) with FunSpe
       probe expectMsgClass classOf[HttpRequest]
       probe.reply(HttpResponse(entity = HttpEntity(ContentTypes.`text/javascript`, SuccessfulResponse)))
 
-      val expected = AccountInfo(ReferralLink, DisplayName, Uid, Country, QuotaInfo(Datastores, Shared, Quota, Normal), Email)
       val actual = Await result (response, 1 second)
-      actual shouldEqual expected
+      actual shouldEqual Info
+    }
+
+    it("should propagate failures") {
+      val probe = TestProbe()
+      probe watch IO(Http)
+
+      val response = Dropbox(ClientIdentifier, AccessToken) accountInfo probe.ref
+
+      probe expectMsgClass classOf[HttpRequest]
+      probe.reply(HttpResponse(status = StatusCodes.Unauthorized, entity = HttpEntity(ContentTypes.`text/javascript`, UnsuccessfulResponse)))
+
+      intercept[UnsuccessfulResponseException] { Await result (response, 1 second) }
     }
   }
 
   private def header(n: String, v: String) = HttpParser.parseHeader(RawHeader(n, v)).right.get
 
-  val ReferralLink = "https://db.tt/alink"
-  val DisplayName = "Test Name"
-  val Uid = 12345678
-  val Country = "KG"
-  val Datastores = 0
-  val Shared = 1
-  val Quota = 2
-  val Normal = 3
-  val Email = "test@name.com"
+  val Info = AccountInfo("https://db.tt/referralLink", "Display Name", 12345678, "KG", QuotaInfo(0, 1, 2, 3), "test@email.com")
 
   val SuccessfulResponse = s"""
-    {"referral_link": "$ReferralLink", 
-     "display_name": "$DisplayName", 
-     "uid": $Uid, 
-     "country": "$Country", 
-     "quota_info": {"datastores": $Datastores, 
-                    "shared": $Shared, 
-                    "quota": $Quota, 
-                    "normal": $Normal}, 
-                    "email": "$Email"}
+    {"referral_link": "${Info.referral_link}", 
+     "display_name": "${Info.display_name}", 
+     "uid": ${Info.uid}, 
+     "country": "${Info.country}", 
+     "quota_info": {"datastores": ${Info.quota_info.datastores}, 
+                    "shared": ${Info.quota_info.shared}, 
+                    "quota": ${Info.quota_info.quota}, 
+                    "normal": ${Info.quota_info.normal}}, 
+                    "email": "${Info.email}"}
+  """
+  val UnsuccessfulResponse = s"""
+    {"error": "The given OAuth 2 access token doesn't exist or has expired."}
   """
 }

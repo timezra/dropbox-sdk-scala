@@ -30,7 +30,6 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter wit
   feature("Account Info") {
     scenario("Gets Account Info") {
       Given("A Dropbox Client")
-      val dropbox = new Dropbox(clientIdentifier, accessToken)
 
       When("Existing users request their account info")
       val accountInfo = Await result (dropbox.accountInfo(), 3 second)
