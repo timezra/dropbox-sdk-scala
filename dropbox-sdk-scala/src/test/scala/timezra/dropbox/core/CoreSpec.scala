@@ -13,13 +13,16 @@ import spray.can.Http
 import spray.http.HttpHeaders.RawHeader
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.Await
+import scala.concurrent.Future
 
 abstract class CoreSpec(_system: ActorSystem) extends TestKit(_system) with FunSpecLike with Matchers with BeforeAndAfterAll {
 
   def this() = this(ActorSystem("dropbox-sdk-scala-test"))
 
-  val ClientIdentifier = "fake_client_identifier"
-  val AccessToken = "fake_access_token"
+  val ClientIdentifier = "client_identifier"
+  val AccessToken = "access_token"
 
   override def afterAll {
     TestKit shutdownActorSystem system
@@ -31,4 +34,8 @@ abstract class CoreSpec(_system: ActorSystem) extends TestKit(_system) with FunS
     probe watch IO(Http)
     probe
   }
+  protected def await[T](h: Future[T]): T = Await result (h, 1 second)
+
+  protected def dropbox: Dropbox = Dropbox(ClientIdentifier, AccessToken)
+
 }

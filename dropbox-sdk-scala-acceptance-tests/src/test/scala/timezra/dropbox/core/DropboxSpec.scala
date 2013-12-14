@@ -50,7 +50,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter wit
       val response = Await result (dropbox.getFile(path = path), 3 second)
 
       Then("She should get its contents")
-      val actualContents = response.foldLeft("")(_ + _.asString)
+      val actualContents = response._2.foldLeft("")(_ + _.asString)
       actualContents shouldEqual expectedContents
     }
   }
