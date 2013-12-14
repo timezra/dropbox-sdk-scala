@@ -3,6 +3,7 @@ package timezra.dropbox.core
 import spray.json.DefaultJsonProtocol
 import akka.actor.ActorRef
 import akka.util.Timeout
+import spray.http.HttpData
 
 case class QuotaInfo(datastores: Int, shared: Long, quota: Long, normal: Long)
 case class AccountInfo(referral_link: String, display_name: String, uid: Long, country: String, quota_info: QuotaInfo, email: String)
@@ -30,19 +31,21 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
   import spray.can.Http
   import scala.concurrent.Future
   import scala.concurrent.duration.DurationInt
+  import spray.client.pipelining._
+  import spray.httpx.unmarshalling.Unmarshaller
+  import spray.http.HttpEntity
 
-  implicit val system = ActorSystem("dropbox-sdk-scala")
+  implicit lazy val system = ActorSystem("dropbox-sdk-scala")
   import system.dispatcher
 
-  def accountInfo(actorRef: ActorRef = IO(Http))(implicit timeout: Timeout = 60.seconds): Future[AccountInfo] = {
-    import spray.client.pipelining._
+  def accountInfo(conduit: ActorRef = IO(Http))(implicit timeout: Timeout = 60.seconds): Future[AccountInfo] = {
     import AccountInfoJsonProtocol.accountInfoFormat
     import spray.json.jsonReader
     import spray.json.JsonParser
     import spray.json.RootJsonReader
-    import spray.httpx.unmarshalling.Unmarshaller
-    import spray.http.HttpEntity.NonEmpty
     import spray.http.HttpCharsets
+    import HttpEntity.NonEmpty
+
     implicit def sprayJsonUnmarshaller[T: RootJsonReader] = Unmarshaller[T](ContentTypes.`text/javascript`) {
       case x: NonEmpty ⇒
         val json = JsonParser(x.asString(defaultCharset = HttpCharsets.`UTF-8`))
@@ -51,10 +54,26 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     val pipeline = (
       addHeader("User-Agent", s"${clientIdentifier} Dropbox-Scala-SDK/1.0") ~>
       addHeader("Authorization", s"Bearer ${accessToken}") ~>
-      sendReceive(actorRef) ~> unmarshal[AccountInfo]
+      sendReceive(conduit) ~>
+      unmarshal[AccountInfo]
     )
     pipeline {
       Get("https://api.dropbox.com/1/account/info")
+    }
+  }
+
+  def getFile(conduit: ActorRef = IO(Http), root: String = "auto", path: String, rev: String = "")(implicit timeout: Timeout = 15 minutes, maxChunkSize: Long = 1048576): Future[Stream[HttpData]] = {
+    implicit val FileUnmarshaller = new Unmarshaller[Stream[HttpData]] {
+      def apply(entity: HttpEntity) = Right(entity.data.toChunkStream(maxChunkSize))
+    }
+    val pipeline = (
+      addHeader("User-Agent", s"${clientIdentifier} Dropbox-Scala-SDK/1.0") ~>
+      addHeader("Authorization", s"Bearer ${accessToken}") ~>
+      sendReceive(conduit) ~>
+      unmarshal[Stream[HttpData]]
+    )
+    pipeline {
+      Get(s"https://api-content.dropbox.com/1/files/$root/$path?rev=$rev")
     }
   }
 
@@ -62,7 +81,7 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     import akka.pattern.ask
     import spray.util.pimpFuture
 
-    IO(Http).ask(Http.CloseAll)(3.second).await
+    IO(Http).ask(Http.CloseAll)(3 second).await
     system.shutdown()
   }
 }

@@ -9,6 +9,7 @@ import org.scalatest.GivenWhenThen
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.Matchers
 import com.typesafe.config.ConfigFactory
+import spray.http.HttpData
 
 @RunWith(classOf[JUnitRunner])
 class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter with Matchers {
@@ -27,17 +28,30 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter wit
     dropbox shutdown
   }
 
-  feature("Account Info") {
-    scenario("Gets Account Info") {
-      Given("A Dropbox Client")
-
-      When("Existing users request their account info")
+  feature("Dropbox accounts") {
+    scenario("Gets account info") {
+      Given("An existing user")
+      When("She requests her account info")
       val accountInfo = Await result (dropbox.accountInfo(), 3 second)
 
-      Then("They should receive it")
+      Then("She should receive it")
       accountInfo.uid should be > 0L
       accountInfo.display_name shouldNot be(empty)
       accountInfo.quota_info shouldNot be(null)
+    }
+  }
+
+  feature("Files and metadata") {
+    scenario("Gets a file") {
+      Given("A file in Dropbox") // TODO: upload the file to Dropbox
+      val expectedContents = "Dropbox SDK Scala Test.\n"
+      val path = "test.txt"
+      When("A user downloads it")
+      val response = Await result (dropbox.getFile(path = path), 3 second)
+
+      Then("She should get its contents")
+      val actualContents = response.foldLeft("") { (s, d) ⇒ s + d.asString }
+      actualContents shouldEqual expectedContents
     }
   }
 }
