@@ -11,6 +11,8 @@ import akka.testkit.TestProbe
 import akka.io.IO
 import spray.can.Http
 import spray.http.HttpHeaders.RawHeader
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 
 abstract class CoreSpec(_system: ActorSystem) extends TestKit(_system) with FunSpecLike with Matchers with BeforeAndAfterAll {
 
@@ -24,7 +26,7 @@ abstract class CoreSpec(_system: ActorSystem) extends TestKit(_system) with FunS
   }
 
   protected def header(n: String, v: String): HttpHeader = HttpParser.parseHeader(RawHeader(n, v)).right.get
-  protected def conduitProbe: TestProbe = {
+  protected def ioProbe: TestProbe = {
     val probe = TestProbe()
     probe watch IO(Http)
     probe

@@ -44,7 +44,7 @@ class AccountInfoSpec extends CoreSpec {
   describe("Account Info") {
 
     it("should make an http request") {
-      val probe = conduitProbe
+      val probe = ioProbe
 
       Dropbox(ClientIdentifier, AccessToken) accountInfo probe.ref
 
@@ -54,7 +54,7 @@ class AccountInfoSpec extends CoreSpec {
     }
 
     it("should parse account info") {
-      val probe = conduitProbe
+      val probe = ioProbe
 
       val response = Dropbox(ClientIdentifier, AccessToken) accountInfo probe.ref
 
@@ -66,7 +66,7 @@ class AccountInfoSpec extends CoreSpec {
     }
 
     it("should propagate failures") {
-      val probe = conduitProbe
+      val probe = ioProbe
 
       val response = Dropbox(ClientIdentifier, AccessToken) accountInfo probe.ref
 

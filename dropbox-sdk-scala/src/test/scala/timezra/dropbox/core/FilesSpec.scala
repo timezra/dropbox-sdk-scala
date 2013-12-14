@@ -20,6 +20,7 @@ import spray.http.HttpResponse
 import spray.http.parser.HttpParser
 import spray.http.StatusCodes
 import spray.httpx.UnsuccessfulResponseException
+import spray.http.ContentTypes.`text/plain`
 
 @RunWith(classOf[JUnitRunner])
 class FilesSpec extends CoreSpec {
@@ -30,14 +31,26 @@ class FilesSpec extends CoreSpec {
 
   describe("Files") {
     it("should make an http request") {
-      val probe = TestProbe()
-      probe watch IO(Http)
+      val probe = ioProbe
 
       Dropbox(ClientIdentifier, AccessToken) getFile (probe.ref, Root, Path, Rev)
 
       val expectedURI = s"https://api-content.dropbox.com/1/files/$Root/$Path?rev=$Rev"
       val expectedHeaders = List(header("Authorization", s"Bearer $AccessToken"), header("User-Agent", s"$ClientIdentifier Dropbox-Scala-SDK/1.0"))
       probe expectMsg HttpRequest(uri = expectedURI, headers = expectedHeaders)
+    }
+
+    it("should stream the file contents") {
+      val probe = ioProbe
+      val expectedContents = "ce n'est pas un test"
+
+      val response = Dropbox(ClientIdentifier, AccessToken) getFile (probe.ref, Root, Path, Rev)
+
+      probe expectMsgClass classOf[HttpRequest]
+      probe.reply(HttpResponse(entity = HttpEntity(`text/plain`, expectedContents)))
+
+      val actual = Await result (response, 1 second)
+      actual.foldLeft("")(_ + _.asString) shouldEqual expectedContents
     }
   }
 }
