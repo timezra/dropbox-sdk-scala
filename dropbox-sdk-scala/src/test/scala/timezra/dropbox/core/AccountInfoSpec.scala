@@ -42,9 +42,6 @@ class AccountInfoSpec extends CoreSpec {
        "email": "${Info.email}"
   }
   """
-  val UnsuccessfulResponse = s"""
-    {"error": "The given OAuth 2 access token doesn't exist or has expired."}
-  """
 
   describe("Account Info") {
 
@@ -70,13 +67,13 @@ class AccountInfoSpec extends CoreSpec {
       actual shouldEqual Info
     }
 
-    it("should propagate failures") {
+    it("should propagate authorization failures") {
       val probe = ioProbe
 
       val response = dropbox accountInfo probe.ref
 
       probe expectMsgClass classOf[HttpRequest]
-      probe.reply(HttpResponse(status = StatusCodes.Unauthorized, entity = HttpEntity(ContentTypes.`text/javascript`, UnsuccessfulResponse)))
+      probe.reply(HttpResponse(status = StatusCodes.Unauthorized, entity = HttpEntity(ContentTypes.`text/javascript`, AuthorizationFailure)))
 
       intercept[UnsuccessfulResponseException] { await(response) }
     }

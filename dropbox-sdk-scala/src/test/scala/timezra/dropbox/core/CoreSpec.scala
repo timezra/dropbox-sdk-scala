@@ -24,18 +24,20 @@ abstract class CoreSpec(_system: ActorSystem) extends TestKit(_system) with FunS
   val ClientIdentifier = "client_identifier"
   val AccessToken = "access_token"
 
+  val AuthorizationFailure = s"""
+    {"error": "The given OAuth 2 access token doesn't exist or has expired."}
+  """
+
   override def afterAll {
     TestKit shutdownActorSystem system
   }
 
-  protected def header(n: String, v: String): HttpHeader = HttpParser.parseHeader(RawHeader(n, v)).right.get
+  protected def dropbox: Dropbox = Dropbox(ClientIdentifier, AccessToken)
   protected def ioProbe: TestProbe = {
     val probe = TestProbe()
     probe watch IO(Http)
     probe
   }
+  protected def header(n: String, v: String): HttpHeader = HttpParser.parseHeader(RawHeader(n, v)).right.get
   protected def await[T](h: Future[T]): T = Await result (h, 1 second)
-
-  protected def dropbox: Dropbox = Dropbox(ClientIdentifier, AccessToken)
-
 }

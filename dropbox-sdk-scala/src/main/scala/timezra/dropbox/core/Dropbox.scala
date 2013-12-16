@@ -11,6 +11,8 @@ import spray.json.DeserializationException
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import spray.json.RootJsonFormat
+import spray.http.HttpHeader
+import spray.http.HttpRequest
 
 case class QuotaInfo(datastores: Int, shared: Long, quota: Long, normal: Long)
 case class AccountInfo(referral_link: String, display_name: String, uid: Long, country: Option[String], quota_info: QuotaInfo, email: String)
@@ -35,11 +37,17 @@ object ContentMetadataJsonProtocol extends DefaultJsonProtocol {
   implicit def contentMetadataFormat = jsonFormat13(ContentMetadata)
 }
 
+case class ByteRange(start: Option[Long], end: Option[Long]) {
+  require(start.isDefined || end.isDefined)
+
+  override def toString = s"""${start.getOrElse("")}-${end.getOrElse("")}"""
+}
+
 object ContentTypes {
   import spray.http.MediaType
   import spray.http.MediaTypes
-  val `text/javascript` = MediaType.custom("text", "javascript", true, true)
-  MediaTypes.register(`text/javascript`)
+  val `text/javascript` = MediaType custom ("text", "javascript", true, true)
+  MediaTypes register `text/javascript`
 }
 
 object Dropbox {
@@ -87,7 +95,7 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     }
   }
 
-  def getFile(conduit: ActorRef = IO(Http), root: String = "auto", path: String, rev: String = "")(implicit timeout: Timeout = 15 minutes, maxChunkSize: Long = 1048576): Future[Tuple2[ContentMetadata, Stream[HttpData]]] = {
+  def getFile(conduit: ActorRef = IO(Http), root: String = "auto", path: String, rev: Option[String] = None, range: Option[Seq[ByteRange]] = None)(implicit timeout: Timeout = 15 minutes, maxChunkSize: Long = 1048576): Future[Tuple2[ContentMetadata, Stream[HttpData]]] = {
     implicit val FileUnmarshaller = new FromResponseUnmarshaller[Tuple2[ContentMetadata, Stream[HttpData]]] {
       import spray.json._
       import DefaultJsonProtocol._
@@ -101,11 +109,13 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     val pipeline = (
       addHeader("User-Agent", s"${clientIdentifier} Dropbox-Scala-SDK/1.0") ~>
       addHeader("Authorization", s"Bearer ${accessToken}") ~>
+      range.fold(identity[HttpRequest]_)(r ⇒ addHeader("Range", s"""bytes=${r.mkString("", ",", "")}""")) ~>
       sendReceive(conduit) ~>
       unmarshal[Tuple2[ContentMetadata, Stream[HttpData]]]
     )
+    val query = rev.fold("")(v ⇒ s"?rev=$v")
     pipeline {
-      Get(s"https://api-content.dropbox.com/1/files/$root/$path?rev=$rev")
+      Get(s"https://api-content.dropbox.com/1/files/$root/$path$query")
     }
   }
 
