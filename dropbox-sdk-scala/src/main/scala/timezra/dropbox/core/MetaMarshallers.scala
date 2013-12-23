@@ -5,7 +5,6 @@ import scalaz.effect.IoExceptionOr
 import scalaz.iteratee.{ EnumeratorT ⇒ E }
 import scalaz.iteratee.IterateeT.fold
 import spray.http.HttpData
-import spray.http.HttpEntity.apply
 import spray.httpx.marshalling.LowerPriorityImplicitMetaMarshallers
 import spray.httpx.marshalling.Marshaller
 

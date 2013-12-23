@@ -167,6 +167,35 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     }
   }
 
+  import java.io.File
+  import spray.http.BodyPart
+  def postFile(conduit: ActorRef = IO(Http), root: String = "auto", path: String, file: File, filename: Option[String] = None, parent_rev: Option[String] = None, overwrite: Option[Boolean] = None)(implicit timeout: Timeout = 15 minutes, locale: Option[Locale] = None): Future[ContentMetadata] = {
+    import ContentMetadataJsonProtocol.contentMetadataFormat
+    import SprayJsonSupport._
+    import spray.http.MultipartFormData
+    import spray.http.HttpHeaders.`Content-Disposition`
+    import spray.httpx.marshalling.MultipartMarshallers._
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[ContentMetadata]
+    )
+    val payload = MultipartFormData(Map(
+      "dropbox-file" -> BodyPart(
+        HttpEntity(HttpData(file)),
+        `Content-Disposition`("form-data", Map("name" -> "file", "filename" -> filename.getOrElse(file getName))) :: Nil
+      )
+    ))
+
+    val q = Seq(parent_rev map ("parent_rev" ->), overwrite map ("overwrite" -> _.toString), locale map ("locale" -> _.toLanguageTag)) flatMap (f ⇒ f)
+
+    pipeline {
+      Post(Uri(s"https://api-content.dropbox.com/1/files/$root/$path") withQuery (q: _*), payload)
+    }
+  }
+
   def shutdown(): Unit = {
     import akka.pattern.ask
     import spray.util.pimpFuture
