@@ -100,13 +100,16 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
   implicit lazy val system = ActorSystem("dropbox-sdk-scala")
   import system.dispatcher
 
+  def addUserAgent = addHeader("User-Agent", s"${clientIdentifier} Dropbox-Scala-SDK/1.0")
+  def addAuthorization = addHeader("Authorization", s"Bearer ${accessToken}")
+
   def accountInfo(conduit: ActorRef = IO(Http))(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[AccountInfo] = {
     import AccountInfoJsonProtocol.accountInfoFormat
     import SprayJsonSupport._
 
     val pipeline = (
-      addHeader("User-Agent", s"${clientIdentifier} Dropbox-Scala-SDK/1.0") ~>
-      addHeader("Authorization", s"Bearer ${accessToken}") ~>
+      addUserAgent ~>
+      addAuthorization ~>
       sendReceive(conduit) ~>
       unmarshal[AccountInfo]
     )
@@ -128,11 +131,11 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
       }
     }
     val pipeline = (
-      addHeader("User-Agent", s"${clientIdentifier} Dropbox-Scala-SDK/1.0") ~>
-      addHeader("Authorization", s"Bearer ${accessToken}") ~>
+      addUserAgent ~>
+      addAuthorization ~>
       range.fold(identity[HttpRequest]_)(r ⇒ addHeader("Range", s"""bytes=${r mkString ("", ",", "")}""")) ~>
       sendReceive(conduit) ~>
-      unmarshal[Tuple2[ContentMetadata, Stream[HttpData]]]
+      unmarshal[(ContentMetadata, Stream[HttpData])]
     )
     val q = Seq(rev map ("rev" ->)) flatMap (f ⇒ f)
     pipeline {
@@ -152,8 +155,8 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     implicit def boundArray2HttpData(t: (Array[Byte], Int)): HttpData = HttpData(t._1 takeT t._2)
 
     val pipeline = (
-      addHeader("User-Agent", s"${clientIdentifier} Dropbox-Scala-SDK/1.0") ~>
-      addHeader("Authorization", s"Bearer ${accessToken}") ~>
+      addUserAgent ~>
+      addAuthorization ~>
       addHeader("Content-Length", String valueOf (length)) ~>
       sendReceive(conduit) ~>
       unmarshal[ContentMetadata]
