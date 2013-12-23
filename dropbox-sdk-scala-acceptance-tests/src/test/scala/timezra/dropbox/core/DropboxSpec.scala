@@ -9,7 +9,6 @@ import org.scalatest.GivenWhenThen
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.Matchers
 import com.typesafe.config.ConfigFactory
-import spray.http.HttpData
 
 @RunWith(classOf[JUnitRunner])
 class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter with Matchers {
@@ -32,12 +31,12 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter wit
     scenario("Gets account info") {
       Given("An existing user")
       When("She requests her account info")
-      val accountInfo = Await result (dropbox.accountInfo(), 3 second)
+      val accountInfo = Await result (dropbox accountInfo (), 3 seconds)
 
       Then("She should receive it")
       accountInfo.uid should be > 0L
-      accountInfo.display_name shouldNot be(empty)
-      accountInfo.quota_info shouldNot be(null)
+      accountInfo.display_name should not be (empty)
+      accountInfo.quota_info should not be (null)
     }
   }
 
@@ -47,11 +46,26 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfter wit
       val expectedContents = "Dropbox SDK Scala Test.\n"
       val path = "test.txt"
       When("A user downloads it")
-      val response = Await result (dropbox.getFile(path = path), 3 second)
+      val response = Await result (dropbox getFile (path = path), 3 seconds)
 
       Then("She should get its contents")
       val actualContents = response._2.foldLeft("")(_ + _.asString)
-      actualContents shouldEqual expectedContents
+      actualContents should be(expectedContents)
+    }
+
+    scenario("Puts a file") {
+      import Implicits._
+      Given("Some file contents")
+      val expectedContents = "Dropbox SDK Scala Test.\n"
+      val path = "test.txt"
+      When("A user puts them in Dropbox")
+      Await result (dropbox.putFile(path = path, contents = expectedContents, length = expectedContents length), 3 seconds)
+
+      Then("That file should be in Dropbox")
+      val response = Await result (dropbox getFile (path = path), 3 seconds)
+      val actualContents = response._2.foldLeft("")(_ + _.asString)
+      actualContents should be(expectedContents)
+      // TODO: Delete the file from Dropbox
     }
   }
 }

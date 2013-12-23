@@ -1,21 +1,21 @@
 package timezra.dropbox.core
 
-import akka.actor.ActorSystem
-import akka.testkit.TestKit
-import org.scalatest.FunSpecLike
-import org.scalatest.Matchers
-import org.scalatest.BeforeAndAfterAll
-import spray.http.HttpHeader
-import spray.http.parser.HttpParser
-import akka.testkit.TestProbe
-import akka.io.IO
-import spray.can.Http
-import spray.http.HttpHeaders.RawHeader
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.Await
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
+
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.FunSpecLike
+import org.scalatest.Matchers
+
+import akka.actor.ActorSystem
+import akka.io.IO
+import akka.testkit.TestKit
+import akka.testkit.TestProbe
+import spray.can.Http
+import spray.http.HttpHeader
+import spray.http.HttpHeaders.RawHeader
+import spray.http.parser.HttpParser
 
 abstract class CoreSpec(_system: ActorSystem) extends TestKit(_system) with FunSpecLike with Matchers with BeforeAndAfterAll {
 
@@ -38,6 +38,8 @@ abstract class CoreSpec(_system: ActorSystem) extends TestKit(_system) with FunS
     probe watch IO(Http)
     probe
   }
-  protected def header(n: String, v: String): HttpHeader = HttpParser.parseHeader(RawHeader(n, v)).right.get
+  protected def header[V <% String](n: String, v: V): HttpHeader = HttpParser.parseHeader(RawHeader(n, v)).right.get
+  protected val authorizationHeader = header("Authorization", s"Bearer $AccessToken")
+  protected val userAgentHeader = header("User-Agent", s"$ClientIdentifier Dropbox-Scala-SDK/1.0")
   protected def await[T](h: Future[T]): T = Await result (h, 1 second)
 }
