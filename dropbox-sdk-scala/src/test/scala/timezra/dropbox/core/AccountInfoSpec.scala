@@ -53,7 +53,7 @@ class AccountInfoSpec extends CoreSpec {
       await(response) should be(Info)
     }
 
-    it("should ask for language specific text") {
+    it("should request language specific text") {
       val probe = ioProbe
 
       implicit val locale = Some(Locale.CHINA)
