@@ -20,7 +20,7 @@ class GetFilesSpec extends CoreSpec {
   val Path = "test.txt"
   val Rev = "test"
 
-  val Metadata = ContentMetadata("0 bytes", 0, "path", false, None, Some("rev"), None, false, "icon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000"), "root", "mime_type", Some(1))
+  val Metadata = ContentMetadata("0 bytes", 0, "path", false, None, Some("rev"), None, false, "icon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), Some(formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000")), "root", Some("mime_type"), Some(1))
   def formatter: DateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z")
   val ContentMetadataJson = s"""
   {
@@ -32,9 +32,9 @@ class GetFilesSpec extends CoreSpec {
       "thumb_exists": ${Metadata.thumb_exists},
       "icon": "${Metadata.icon}",
       "modified": "${formatter.format(Metadata.modified.get)}",
-      "client_mtime": "${formatter.format(Metadata.client_mtime)}",
+      "client_mtime": "${formatter.format(Metadata.client_mtime.get)}",
       "root": "${Metadata.root}",
-      "mime_type": "${Metadata.mime_type}",
+      "mime_type": "${Metadata.mime_type.get}",
       "revision": ${Metadata.revision.get}
   }
   """

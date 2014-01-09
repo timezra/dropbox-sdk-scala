@@ -50,7 +50,7 @@ object AccountInfoJsonProtocol extends DefaultJsonProtocol {
   implicit def accountInfoFormat = jsonFormat6(AccountInfo)
 }
 
-case class ContentMetadata(size: String, bytes: Long, path: String, is_dir: Boolean, is_deleted: Option[Boolean], rev: Option[String], hash: Option[String], thumb_exists: Boolean, icon: String, modified: Option[Date], client_mtime: Date, root: String, mime_type: String, revision: Option[Long])
+case class ContentMetadata(size: String, bytes: Long, path: String, is_dir: Boolean, is_deleted: Option[Boolean], rev: Option[String], hash: Option[String], thumb_exists: Boolean, icon: String, modified: Option[Date], client_mtime: Option[Date], root: String, mime_type: Option[String], revision: Option[Long])
 object ContentMetadataJsonProtocol extends DefaultJsonProtocol {
   implicit object DateJsonFormat extends RootJsonFormat[Date] {
     def write(date: Date) = {
@@ -119,7 +119,10 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     }
   }
 
-  def getFile(conduit: ActorRef = IO(Http), root: String = "auto", path: String, rev: Option[String] = None, range: Option[Seq[ByteRange]] = None)(implicit timeout: Timeout = 15 minutes, maxChunkSize: Long = 1048576): Future[Tuple2[ContentMetadata, Stream[HttpData]]] = {
+  def getFile(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String, rev: Option[String] = None,
+    range: Option[Seq[ByteRange]] = None)(implicit timeout: Timeout = 15 minutes, maxChunkSize: Long = 1048576): Future[Tuple2[ContentMetadata, Stream[HttpData]]] = {
     implicit val FileUnmarshaller = new FromResponseUnmarshaller[Tuple2[ContentMetadata, Stream[HttpData]]] {
       import spray.json._
       import DefaultJsonProtocol._
@@ -146,7 +149,14 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
   import scalaz.effect.IoExceptionOr
   import scalaz.iteratee.EnumeratorT
   import scalaz.effect.{ IO ⇒ zIO }
-  def putFile(conduit: ActorRef = IO(Http), root: String = "auto", path: String, contents: EnumeratorT[IoExceptionOr[(Array[Byte], Int)], zIO], length: Int, rev: Option[String] = None, parent_rev: Option[String] = None, overwrite: Option[Boolean] = None)(implicit timeout: Timeout = 15 minutes, locale: Option[Locale] = None): Future[ContentMetadata] = {
+  def putFile(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String,
+    contents: EnumeratorT[IoExceptionOr[(Array[Byte], Int)], zIO],
+    length: Int,
+    rev: Option[String] = None,
+    parent_rev: Option[String] = None,
+    overwrite: Option[Boolean] = None)(implicit timeout: Timeout = 15 minutes, locale: Option[Locale] = None): Future[ContentMetadata] = {
     import ContentMetadataJsonProtocol.contentMetadataFormat
     import SprayJsonSupport._
     import MetaMarshallers._
@@ -169,7 +179,13 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
 
   import java.io.File
   import spray.http.BodyPart
-  def postFile(conduit: ActorRef = IO(Http), root: String = "auto", path: String, file: File, filename: Option[String] = None, parent_rev: Option[String] = None, overwrite: Option[Boolean] = None)(implicit timeout: Timeout = 15 minutes, locale: Option[Locale] = None): Future[ContentMetadata] = {
+  def postFile(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String,
+    file: File,
+    filename: Option[String] = None,
+    parent_rev: Option[String] = None,
+    overwrite: Option[Boolean] = None)(implicit timeout: Timeout = 15 minutes, locale: Option[Locale] = None): Future[ContentMetadata] = {
     import ContentMetadataJsonProtocol.contentMetadataFormat
     import SprayJsonSupport._
     import spray.http.MultipartFormData
@@ -193,6 +209,34 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
 
     pipeline {
       Post(Uri(s"https://api-content.dropbox.com/1/files/$root/$path") withQuery (q: _*), payload)
+    }
+  }
+
+  def metadata(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String,
+    file_limit: Option[Int] = None,
+    hash: Option[String] = None,
+    list: Option[Boolean] = None,
+    include_deleted: Option[Boolean] = None,
+    rev: Option[String] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[ContentMetadata] = {
+    import ContentMetadataJsonProtocol.contentMetadataFormat
+    import SprayJsonSupport._
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[ContentMetadata]
+    )
+    val q = Seq(locale map ("locale" -> _.toLanguageTag),
+      file_limit map ("file_limit" -> _.toString),
+      hash map ("hash" ->),
+      list map ("list" -> _.toString),
+      include_deleted map ("include_deleted" -> _.toString),
+      rev map ("rev" ->)) flatMap (f ⇒ f)
+    pipeline {
+      Get(Uri(s"https://api.dropbox.com/1/metadata/$root/$path") withQuery (q: _*))
     }
   }
 

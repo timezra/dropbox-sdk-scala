@@ -69,7 +69,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
     }
 
     scenario("Posts a file") {
-      Given("A file")
+      Given("A local file")
       val expectedFile = new JFile("src/test/resources/application.conf")
       val path = ""
       val expectedFilename = "test_post.txt"
@@ -81,6 +81,26 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       val actualContents = response._2.foldLeft("")(_ + _.asString)
       actualContents should be(new SFile(expectedFile).slurp)
       // TODO: Delete the file from Dropbox
+    }
+
+    scenario("Gets File Metadata") {
+      Given("A file in Dropbox") // TODO: upload the file to Dropbox
+      val path = "test.txt"
+      When("A user gets its metadata")
+      val response = Await result (dropbox metadata (path = path), 3 seconds)
+
+      Then("She should receive them")
+      pending
+    }
+
+    scenario("Gets Folder Metadata") {
+      Given("A folder in Dropbox")
+      val path = ""
+      When("A user gets its metadata")
+      val response = Await result (dropbox metadata (path = path), 3 seconds)
+
+      Then("She should receive them")
+      pending
     }
   }
 }
