@@ -90,7 +90,10 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       val response = Await result (dropbox metadata (path = path), 3 seconds)
 
       Then("She should receive them")
-      pending
+      val contentMetadata = response.right.get
+      contentMetadata.is_dir should be(false)
+      contentMetadata.bytes should be > 0L
+      contentMetadata.path should be(s"/$path")
     }
 
     scenario("Gets Folder Metadata") {

@@ -16,29 +16,47 @@ import java.text.SimpleDateFormat
 class MetadataSpec extends CoreSpec {
 
   val Root = "root"
-  val Path = "test.txt"
+  val FilePath = "test.txt"
+  val FolderPath = "subfolder"
   val FileLimit = 25000
   val Hash = "hash"
   val Rev = "test"
 
-  val Metadata = ContentMetadata("0 bytes", 0, "path", false, None, Some("rev"), None, false, "icon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), Some(formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000")), "root", Some("mime_type"), Some(1))
+  val FileMetadata = ContentMetadata("10 bytes", 10, s"/$FilePath", false, None, Some("rev"), None, false, "fileIcon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), Some(formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000")), "root", Some("mime_type"), Some(1))
+  val FolderMetadata = ContentMetadata("0 bytes", 0, s"/$FolderPath", true, None, None, Some(Hash), false, "folderIcon", None, None, "root", None, None)
   def formatter: DateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z")
-  val ContentMetadataJson = s"""
+
+  val FileMetadataJson = s"""
   {
-      "size": "${Metadata.size}",
-      "bytes": ${Metadata.bytes},
-      "path": "${Metadata.path}",
-      "is_dir": ${Metadata.is_dir},
-      "rev": "${Metadata.rev.get}",
-      "thumb_exists": ${Metadata.thumb_exists},
-      "icon": "${Metadata.icon}",
-      "modified": "${formatter.format(Metadata.modified.get)}",
-      "client_mtime": "${formatter.format(Metadata.client_mtime.get)}",
-      "root": "${Metadata.root}",
-      "mime_type": "${Metadata.mime_type.get}",
-      "revision": ${Metadata.revision.get}
+      "size": "${FileMetadata.size}",
+      "bytes": ${FileMetadata.bytes},
+      "path": "${FileMetadata.path}",
+      "is_dir": ${FileMetadata.is_dir},
+      "rev": "${FileMetadata.rev.get}",
+      "thumb_exists": ${FileMetadata.thumb_exists},
+      "icon": "${FileMetadata.icon}",
+      "modified": "${formatter.format(FileMetadata.modified.get)}",
+      "client_mtime": "${formatter.format(FileMetadata.client_mtime.get)}",
+      "root": "${FileMetadata.root}",
+      "mime_type": "${FileMetadata.mime_type.get}",
+      "revision": ${FileMetadata.revision.get}
   }
   """
+
+  val FolderMetadataJson = s"""
+  {
+      "hash": "${FolderMetadata.hash.get}",
+      "thumb_exists": ${FolderMetadata.thumb_exists},
+      "bytes": ${FolderMetadata.bytes},
+      "path": "${FolderMetadata.path}", 
+      "is_dir": ${FolderMetadata.is_dir}, 
+      "size": "${FolderMetadata.size}", 
+      "root": "${FolderMetadata.root}", 
+      "contents": [$FileMetadataJson],
+      "icon": "${FolderMetadata.icon}"
+  }
+  """
+
   val NotFoundFailure = """{"error": "Path not found"}"""
 
   describe("Metadata") {
@@ -46,16 +64,16 @@ class MetadataSpec extends CoreSpec {
     it("should make an http request") {
       val probe = ioProbe
 
-      dropbox metadata (probe ref, Root, Path)
+      dropbox metadata (probe ref, Root, FilePath)
 
-      val expectedURI = s"https://api.dropbox.com/1/metadata/$Root/$Path"
+      val expectedURI = s"https://api.dropbox.com/1/metadata/$Root/$FilePath"
       probe expectMsg HttpRequest(uri = expectedURI, headers = List(authorizationHeader, userAgentHeader))
     }
 
     it("should request a specific file limit") {
       val probe = ioProbe
 
-      dropbox metadata (probe ref, Root, Path, Some(FileLimit))
+      dropbox metadata (probe ref, Root, FilePath, Some(FileLimit))
 
       val request = probe expectMsgClass classOf[HttpRequest]
       request.uri.query.get("file_limit").get.toInt should be(FileLimit)
@@ -64,7 +82,7 @@ class MetadataSpec extends CoreSpec {
     it("should request a specific hash") {
       val probe = ioProbe
 
-      dropbox metadata (probe ref, Root, Path, hash = Some(Hash))
+      dropbox metadata (probe ref, Root, FilePath, hash = Some(Hash))
 
       val request = probe expectMsgClass classOf[HttpRequest]
       request.uri.query.get("hash").get should be(Hash)
@@ -73,7 +91,7 @@ class MetadataSpec extends CoreSpec {
     it("should request that contents be listed") {
       val probe = ioProbe
 
-      dropbox metadata (probe ref, Root, Path, list = Some(true))
+      dropbox metadata (probe ref, Root, FilePath, list = Some(true))
 
       val request = probe expectMsgClass classOf[HttpRequest]
       request.uri.query.get("list").get.toBoolean should be(true)
@@ -82,7 +100,7 @@ class MetadataSpec extends CoreSpec {
     it("should request that deleted contents be listed") {
       val probe = ioProbe
 
-      dropbox metadata (probe ref, Root, Path, include_deleted = Some(true))
+      dropbox metadata (probe ref, Root, FilePath, include_deleted = Some(true))
 
       val request = probe expectMsgClass classOf[HttpRequest]
       request.uri.query.get("include_deleted").get.toBoolean should be(true)
@@ -91,7 +109,7 @@ class MetadataSpec extends CoreSpec {
     it("should request a specific revision") {
       val probe = ioProbe
 
-      dropbox metadata (probe ref, Root, Path, rev = Some(Rev))
+      dropbox metadata (probe ref, Root, FilePath, rev = Some(Rev))
 
       val request = probe expectMsgClass classOf[HttpRequest]
       request.uri.query.get("rev").get should be(Rev)
@@ -101,11 +119,35 @@ class MetadataSpec extends CoreSpec {
       val probe = ioProbe
 
       implicit val locale = Some(Locale.CHINA)
-      dropbox metadata (probe ref, Root, Path)
+      dropbox metadata (probe ref, Root, FilePath)
 
       val request = probe expectMsgClass classOf[HttpRequest]
 
       request.uri.query.get("locale") should be(locale.map(_.toLanguageTag))
+    }
+
+    it("should return true if folder contents have not changed") {
+      val probe = ioProbe
+
+      val response = dropbox metadata (probe ref, Root, FolderPath, hash = Some(Hash))
+
+      probe expectMsgClass classOf[HttpRequest]
+      probe reply (HttpResponse(StatusCodes.NotModified))
+
+      await(response) should be(Left(true))
+    }
+
+    it("should return file content metadata") {
+      val probe = ioProbe
+
+      val response = dropbox metadata (probe ref, Root, FilePath)
+
+      probe expectMsgClass classOf[HttpRequest]
+      probe reply (HttpResponse(StatusCodes.OK, HttpEntity(ContentTypes `text/javascript`, FileMetadataJson)))
+
+      val either = await(response)
+
+      either should be(Right(FileMetadata))
     }
   }
 }

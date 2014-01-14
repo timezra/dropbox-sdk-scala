@@ -219,15 +219,26 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     hash: Option[String] = None,
     list: Option[Boolean] = None,
     include_deleted: Option[Boolean] = None,
-    rev: Option[String] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[ContentMetadata] = {
+    rev: Option[String] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[Either[Boolean, ContentMetadata]] = {
+
+    import spray.http.StatusCodes
+    import spray.json._
+    import DefaultJsonProtocol._
     import ContentMetadataJsonProtocol.contentMetadataFormat
-    import SprayJsonSupport._
+
+    implicit val NotModifiedOrResultUnmarshaller = new FromResponseUnmarshaller[Either[Boolean, ContentMetadata]] {
+      def apply(response: HttpResponse) = response.status match {
+        case StatusCodes.NotModified ⇒ Right(Left(true))
+        case StatusCodes.Success(_) ⇒ Right(Right(response.entity.asString.asJson.convertTo))
+        case _ ⇒ throw new spray.httpx.UnsuccessfulResponseException(response)
+      }
+    }
 
     val pipeline = (
       addUserAgent ~>
       addAuthorization ~>
       sendReceive(conduit) ~>
-      unmarshal[ContentMetadata]
+      unmarshal[Either[Boolean, ContentMetadata]]
     )
     val q = Seq(locale map ("locale" -> _.toLanguageTag),
       file_limit map ("file_limit" -> _.toString),
