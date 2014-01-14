@@ -50,7 +50,7 @@ object AccountInfoJsonProtocol extends DefaultJsonProtocol {
   implicit def accountInfoFormat = jsonFormat6(AccountInfo)
 }
 
-case class ContentMetadata(size: String, bytes: Long, path: String, is_dir: Boolean, is_deleted: Option[Boolean], rev: Option[String], hash: Option[String], thumb_exists: Boolean, icon: String, modified: Option[Date], client_mtime: Option[Date], root: String, mime_type: Option[String], revision: Option[Long])
+case class ContentMetadata(size: String, bytes: Long, path: String, is_dir: Boolean, is_deleted: Option[Boolean], rev: Option[String], hash: Option[String], thumb_exists: Boolean, icon: String, modified: Option[Date], client_mtime: Option[Date], root: String, mime_type: Option[String], revision: Option[Long], contents: Option[List[ContentMetadata]])
 object ContentMetadataJsonProtocol extends DefaultJsonProtocol {
   implicit object DateJsonFormat extends RootJsonFormat[Date] {
     def write(date: Date) = {
@@ -63,7 +63,7 @@ object ContentMetadataJsonProtocol extends DefaultJsonProtocol {
     }
     def formatter: DateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z")
   }
-  implicit def contentMetadataFormat = jsonFormat14(ContentMetadata)
+  implicit def contentMetadataFormat: RootJsonFormat[ContentMetadata] = rootFormat(lazyFormat(jsonFormat15(ContentMetadata)))
 }
 
 case class ByteRange(start: Option[Long], end: Option[Long]) {

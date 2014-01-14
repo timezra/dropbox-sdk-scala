@@ -22,8 +22,8 @@ class MetadataSpec extends CoreSpec {
   val Hash = "hash"
   val Rev = "test"
 
-  val FileMetadata = ContentMetadata("10 bytes", 10, s"/$FilePath", false, None, Some("rev"), None, false, "fileIcon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), Some(formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000")), "root", Some("mime_type"), Some(1))
-  val FolderMetadata = ContentMetadata("0 bytes", 0, s"/$FolderPath", true, None, None, Some(Hash), false, "folderIcon", None, None, "root", None, None)
+  val FileMetadata = ContentMetadata("10 bytes", 10, s"/$FilePath", false, None, Some("rev"), None, false, "fileIcon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), Some(formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000")), "root", Some("mime_type"), Some(1), None)
+  val FolderMetadata = ContentMetadata("0 bytes", 0, s"/$FolderPath", true, None, None, Some(Hash), false, "folderIcon", None, None, "root", None, None, Some(List(FileMetadata)))
   def formatter: DateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z")
 
   val FileMetadataJson = s"""
@@ -148,6 +148,19 @@ class MetadataSpec extends CoreSpec {
       val either = await(response)
 
       either should be(Right(FileMetadata))
+    }
+
+    it("should return folder content metadata") {
+      val probe = ioProbe
+
+      val response = dropbox metadata (probe ref, Root, FolderPath)
+
+      probe expectMsgClass classOf[HttpRequest]
+      probe reply (HttpResponse(StatusCodes.OK, HttpEntity(ContentTypes `text/javascript`, FolderMetadataJson)))
+
+      val either = await(response)
+
+      either should be(Right(FolderMetadata))
     }
   }
 }
