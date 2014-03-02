@@ -1,18 +1,18 @@
 package timezra.dropbox.core
 
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 import org.junit.runner.RunWith
+import spray.http.ContentType.apply
+import spray.http.HttpData.Bytes
 import spray.http.HttpEntity
+import spray.http.HttpMethods.POST
 import spray.http.HttpRequest
 import spray.http.HttpResponse
 import spray.http.StatusCodes
-import spray.httpx.UnsuccessfulResponseException
+import spray.http.Uri.apply
 import org.scalatest.junit.JUnitRunner
-import ContentTypes.`text/javascript`
-import java.util.Locale
-import java.text.DateFormat
-import java.text.SimpleDateFormat
-import spray.http.HttpMethods.POST
-import spray.http.HttpData.Bytes
 
 @RunWith(classOf[JUnitRunner])
 class DeltaSpec extends CoreSpec {
@@ -61,7 +61,7 @@ class DeltaSpec extends CoreSpec {
 
       dropbox delta (probe ref)
 
-      val expectedURI = s"https://api.dropbox.com/1/delta"
+      val expectedURI = "https://api.dropbox.com/1/delta"
       probe expectMsg HttpRequest(method = POST, uri = expectedURI, headers = List(authorizationHeader, userAgentHeader))
     }
 

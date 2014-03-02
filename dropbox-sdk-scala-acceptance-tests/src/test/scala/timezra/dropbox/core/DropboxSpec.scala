@@ -12,6 +12,7 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.Matchers
 import com.typesafe.config.ConfigFactory
 import org.scalatest.ConfigMap
+import java.util.UUID
 
 @RunWith(classOf[JUnitRunner])
 class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with Matchers {
@@ -30,6 +31,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
   feature("Dropbox accounts") {
     scenario("Gets account info") {
       Given("An existing user")
+
       When("She requests her account info")
       val accountInfo = Await result (dropbox accountInfo (), 3 seconds)
 
@@ -45,6 +47,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       Given("A file in Dropbox") // TODO: upload the file to Dropbox
       val expectedContents = "Dropbox SDK Scala Test.\n"
       val path = "test.txt"
+
       When("A user downloads it")
       val response = Await result (dropbox getFile (path = path), 3 seconds)
 
@@ -55,9 +58,11 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
 
     scenario("Puts a file") {
       import Implicits._
+
       Given("Some file contents")
       val expectedContents = "Dropbox SDK Scala Test.\n"
       val path = "test.txt"
+
       When("A user puts them in Dropbox")
       Await result (dropbox putFile (path = path, contents = expectedContents, length = expectedContents length), 3 seconds)
 
@@ -73,6 +78,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       val expectedFile = new JFile("src/test/resources/application.conf")
       val path = ""
       val expectedFilename = "test_post.txt"
+
       When("A user posts it to Dropbox")
       Await result (dropbox postFile (path = path, file = expectedFile, filename = Some(expectedFilename)), 3 seconds)
 
@@ -86,6 +92,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
     scenario("Gets File Metadata") {
       Given("A file in Dropbox") // TODO: upload the file to Dropbox
       val path = "test.txt"
+
       When("A user gets its metadata")
       val response = Await result (dropbox metadata (path = path), 3 seconds)
 
@@ -99,6 +106,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
     scenario("Gets Folder Metadata") {
       Given("A folder in Dropbox")
       val path = ""
+
       When("A user gets its metadata")
       val response = Await result (dropbox metadata (path = path), 3 seconds)
 
@@ -113,15 +121,36 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
     scenario("Gets A Change Delta") {
       Given("A folder in Dropbox")
       val path_prefix = "/"
-      When("A user gets its delta")
-      val deltaMetadata = Await result (dropbox delta (path_prefix = Some(path_prefix)), 3 seconds)
-      And("A user gets its delta")
 
-      Then("She should receive them")
+      When("A user asks for its delta")
+      val deltaMetadata = Await result (dropbox delta (path_prefix = Some(path_prefix)), 3 seconds)
+
+      Then("She should receive it")
       deltaMetadata.entries should not be (null)
       deltaMetadata.reset should be(true)
       deltaMetadata.has_more should be(false)
       deltaMetadata.cursor should not be (null)
+    }
+
+    scenario("Gets A Longpoll Delta") {
+      import Implicits._
+
+      Given("A cursor")
+      val dropboxMetadata = (Await result (dropbox delta (path_prefix = Some("/")), 3 seconds))
+
+      When("A user polls for a change")
+      val longpoll_result = dropbox longpoll_delta (cursor = dropboxMetadata.cursor)
+
+      And("Modifies the contents of the folder")
+      val path = UUID.randomUUID().toString
+      val contents = "Longpoll Delta Test"
+      Await result (dropbox putFile (path = path, contents = contents, length = contents length), 3 seconds)
+
+      Then("The user should get an indication that the folder contents have changed")
+      val longpollMetadata = Await result (longpoll_result, 3 seconds)
+      longpollMetadata.changes should be(true)
+
+      // TODO: Delete the file from Dropbox
     }
   }
 }

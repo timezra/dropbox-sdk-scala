@@ -72,6 +72,11 @@ object DeltaMetadataJsonProtocol extends DefaultJsonProtocol {
   implicit def deltaMetadataFormat = jsonFormat4(DeltaMetadata)
 }
 
+case class LongpollMetadata(changes: Boolean, backoff: Option[Int])
+object LongpollMetadataJsonProtocol extends DefaultJsonProtocol {
+  implicit def longpollMetadataFormat = jsonFormat2(LongpollMetadata)
+}
+
 case class ByteRange(start: Option[Long], end: Option[Long]) {
   require(start.isDefined || end.isDefined)
 
@@ -111,7 +116,7 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
 
   def accountInfo(conduit: ActorRef = IO(Http))(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[AccountInfo] = {
     import AccountInfoJsonProtocol.accountInfoFormat
-    import SprayJsonSupport._
+    import SprayJsonSupport.sprayJsonUnmarshaller
 
     val pipeline = (
       addUserAgent ~>
@@ -164,7 +169,7 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     parent_rev: Option[String] = None,
     overwrite: Option[Boolean] = None)(implicit timeout: Timeout = 15 minutes, locale: Option[Locale] = None): Future[ContentMetadata] = {
     import ContentMetadataJsonProtocol.contentMetadataFormat
-    import SprayJsonSupport._
+    import SprayJsonSupport.sprayJsonUnmarshaller
     import MetaMarshallers._
     import Arrays._
 
@@ -193,7 +198,7 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     parent_rev: Option[String] = None,
     overwrite: Option[Boolean] = None)(implicit timeout: Timeout = 15 minutes, locale: Option[Locale] = None): Future[ContentMetadata] = {
     import ContentMetadataJsonProtocol.contentMetadataFormat
-    import SprayJsonSupport._
+    import SprayJsonSupport.sprayJsonUnmarshaller
     import spray.http.MultipartFormData
     import spray.http.HttpHeaders.`Content-Disposition`
     import spray.httpx.marshalling.MultipartMarshallers._
@@ -262,7 +267,7 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     path_prefix: Option[String] = None,
     cursor: Option[String] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[DeltaMetadata] = {
     import DeltaMetadataJsonProtocol.deltaMetadataFormat
-    import SprayJsonSupport._
+    import SprayJsonSupport.sprayJsonUnmarshaller
     import spray.httpx.marshalling.MultipartMarshallers._
     import spray.http.FormData
 
@@ -280,6 +285,22 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
 
     pipeline {
       Post(Uri(s"https://api.dropbox.com/1/delta"), FormData(payload))
+    }
+  }
+
+  def longpoll_delta(conduit: ActorRef = IO(Http), cursor: String, timeout: Option[Int] = None)(implicit futureTimeout: Timeout = timeout getOrElse 30 seconds, locale: Option[Locale] = None): Future[LongpollMetadata] = {
+    import LongpollMetadataJsonProtocol.longpollMetadataFormat
+    import SprayJsonSupport.sprayPlainTextJsonUnmarshaller
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[LongpollMetadata]
+    )
+    val q = Seq(Some("cursor", cursor), timeout map ("timeout" -> _.toString)) flatMap (f ⇒ f)
+    pipeline {
+      Get(Uri("https://api-notify.dropbox.com/1/longpoll_delta") withQuery (q: _*))
     }
   }
 
