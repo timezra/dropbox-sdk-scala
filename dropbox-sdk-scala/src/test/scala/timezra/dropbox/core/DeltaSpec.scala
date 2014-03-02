@@ -17,19 +17,15 @@ import spray.http.HttpData.Bytes
 @RunWith(classOf[JUnitRunner])
 class DeltaSpec extends CoreSpec {
 
-  val Root = "root"
   val FilePath = "test.txt"
-  val FolderPath = "subfolder"
-  val FileLimit = 25000
-  val Rev = "test"
   val Reset = true
   val Cursor = "cursor"
   val HasMore = false
   val PathPrefix = "/"
 
   val FileMetadata = ContentMetadata("10 bytes", 10, s"/$FilePath", false, None, Some("rev"), None, false, "fileIcon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), Some(formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000")), "root", Some("mime_type"), Some(1), None)
-  val Entry = Tuple2(s"/$FilePath", FileMetadata)
-  val Metadata = DeltaMetadata(List(Entry), Reset, Cursor, HasMore)
+  val DeltaEntry = Tuple2(s"/$FilePath", FileMetadata)
+  val Metadata = DeltaMetadata(List(DeltaEntry), Reset, Cursor, HasMore)
   def formatter: DateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z")
 
   val FileMetadataJson = s"""
@@ -50,15 +46,13 @@ class DeltaSpec extends CoreSpec {
   """
 
   val DeltaMetadataJson = s"""
-    {
-        "entries": [["/$FilePath", $FileMetadataJson]],
-        "reset": $Reset,
-        "cursor": "$Cursor",
-        "has_more": $HasMore
-    }
-    """
-
-  val NotFoundFailure = """{"error": "Path not found"}"""
+  {
+      "entries": [["/$FilePath", $FileMetadataJson]],
+      "reset": $Reset,
+      "cursor": "$Cursor",
+      "has_more": $HasMore
+  }
+  """
 
   describe("Delta") {
 
