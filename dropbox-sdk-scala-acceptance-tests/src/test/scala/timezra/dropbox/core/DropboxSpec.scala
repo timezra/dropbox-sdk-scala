@@ -109,5 +109,19 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       contentMetadata.path should be(s"/$path")
       contentMetadata.contents.isDefined should be(true)
     }
+
+    scenario("Gets A Change Delta") {
+      Given("A folder in Dropbox")
+      val path_prefix = "/"
+      When("A user gets its delta")
+      val deltaMetadata = Await result (dropbox delta (path_prefix = Some(path_prefix)), 3 seconds)
+      And("A user gets its delta")
+
+      Then("She should receive them")
+      deltaMetadata.entries should not be (null)
+      deltaMetadata.reset should be(true)
+      deltaMetadata.has_more should be(false)
+      deltaMetadata.cursor should not be (null)
+    }
   }
 }

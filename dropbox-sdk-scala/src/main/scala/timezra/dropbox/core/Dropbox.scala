@@ -66,6 +66,12 @@ object ContentMetadataJsonProtocol extends DefaultJsonProtocol {
   implicit def contentMetadataFormat: RootJsonFormat[ContentMetadata] = rootFormat(lazyFormat(jsonFormat15(ContentMetadata)))
 }
 
+case class DeltaMetadata(entries: List[Tuple2[String, ContentMetadata]], reset: Boolean, cursor: String, has_more: Boolean)
+object DeltaMetadataJsonProtocol extends DefaultJsonProtocol {
+  import ContentMetadataJsonProtocol.contentMetadataFormat
+  implicit def deltaMetadataFormat = jsonFormat4(DeltaMetadata)
+}
+
 case class ByteRange(start: Option[Long], end: Option[Long]) {
   require(start.isDefined || end.isDefined)
 
@@ -248,6 +254,32 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
       rev map ("rev" ->)) flatMap (f ⇒ f)
     pipeline {
       Get(Uri(s"https://api.dropbox.com/1/metadata/$root/$path") withQuery (q: _*))
+    }
+  }
+
+  import spray.http.BodyPart
+  def delta(conduit: ActorRef = IO(Http),
+    path_prefix: Option[String] = None,
+    cursor: Option[String] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[DeltaMetadata] = {
+    import DeltaMetadataJsonProtocol.deltaMetadataFormat
+    import SprayJsonSupport._
+    import spray.httpx.marshalling.MultipartMarshallers._
+    import spray.http.FormData
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[DeltaMetadata]
+    )
+    val payload = Seq(
+      path_prefix map ("path_prefix" ->),
+      cursor map ("cursor" ->),
+      locale map ("locale" -> _.toLanguageTag)
+    ) flatMap (f ⇒ f)
+
+    pipeline {
+      Post(Uri(s"https://api.dropbox.com/1/delta"), FormData(payload))
     }
   }
 
