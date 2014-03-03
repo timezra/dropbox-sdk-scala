@@ -1,16 +1,16 @@
 package timezra.dropbox.core
 
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 import org.junit.runner.RunWith
+import spray.http.ContentType.apply
 import spray.http.HttpEntity
 import spray.http.HttpRequest
 import spray.http.HttpResponse
 import spray.http.StatusCodes
-import spray.httpx.UnsuccessfulResponseException
+import spray.http.Uri.apply
 import org.scalatest.junit.JUnitRunner
-import ContentTypes.`text/javascript`
-import java.util.Locale
-import java.text.DateFormat
-import java.text.SimpleDateFormat
 
 @RunWith(classOf[JUnitRunner])
 class MetadataSpec extends CoreSpec {
@@ -56,8 +56,6 @@ class MetadataSpec extends CoreSpec {
       "icon": "${FolderMetadata.icon}"
   }
   """
-
-  val NotFoundFailure = """{"error": "Path not found"}"""
 
   describe("Metadata") {
 

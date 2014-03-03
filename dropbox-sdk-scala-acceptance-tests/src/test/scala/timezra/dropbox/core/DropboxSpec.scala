@@ -13,9 +13,10 @@ import org.scalatest.Matchers
 import com.typesafe.config.ConfigFactory
 import org.scalatest.ConfigMap
 import java.util.UUID
+import org.scalatest.Inside
 
 @RunWith(classOf[JUnitRunner])
-class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with Matchers {
+class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with Matchers with Inside {
 
   val config = ConfigFactory.load().getConfig("timezra.dropbox.core").getConfig("test").getConfig("client")
   val clientIdentifier = config.getString("clientIdentifier")
@@ -151,6 +152,24 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       longpollMetadata.changes should be(true)
 
       // TODO: Delete the file from Dropbox
+    }
+
+    scenario("Gets Revisions") {
+      Given("A file in Dropbox") // TODO: upload the file to Dropbox
+      val filePath = "test.txt"
+
+      When("A user gets its revisions")
+      val revisions = Await result (dropbox revisions (path = filePath), 3 seconds)
+
+      Then("She should receive them")
+      revisions.foreach(revision ⇒
+        inside(revision) {
+          case ContentMetadata(_, bytes, path, is_dir, _, _, _, _, _, _, _, _, _, _, _) ⇒
+            bytes should be >= 0L
+            is_dir should be(false)
+            path should be(s"/$filePath")
+        }
+      )
     }
   }
 }

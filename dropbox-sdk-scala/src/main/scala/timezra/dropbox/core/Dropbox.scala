@@ -31,6 +31,7 @@ import spray.httpx.unmarshalling.FromResponseUnmarshaller
 import spray.httpx.unmarshalling.Unmarshaller
 import spray.json.DefaultJsonProtocol
 import spray.json.DeserializationException
+import spray.json.JsArray
 import spray.json.JsString
 import spray.json.JsValue
 import spray.json.JsonParser
@@ -301,6 +302,28 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     val q = Seq(Some("cursor", cursor), timeout map ("timeout" -> _.toString)) flatMap (f ⇒ f)
     pipeline {
       Get(Uri("https://api-notify.dropbox.com/1/longpoll_delta") withQuery (q: _*))
+    }
+  }
+
+  def revisions(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String,
+    rev_limit: Option[Int] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[List[ContentMetadata]] = {
+
+    import spray.json.CollectionFormats
+    import ContentMetadataJsonProtocol.contentMetadataFormat
+    import SprayJsonSupport.sprayJsonUnmarshaller
+    import DefaultJsonProtocol._
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[List[ContentMetadata]]
+    )
+    val q = Seq(rev_limit map ("rev_limit" -> _.toString), locale map ("locale" -> _.toLanguageTag)) flatMap (f ⇒ f)
+    pipeline {
+      Get(Uri(s"https://api.dropbox.com/1/revisions/$root/$path") withQuery (q: _*))
     }
   }
 
