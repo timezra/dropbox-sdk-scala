@@ -162,6 +162,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       val revisions = Await result (dropbox revisions (path = filePath), 3 seconds)
 
       Then("She should receive them")
+      revisions.size should be > 0
       revisions.foreach(revision ⇒
         inside(revision) {
           case ContentMetadata(_, bytes, path, is_dir, _, _, _, _, _, _, _, _, _, _, _) ⇒
@@ -198,6 +199,32 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       actualContents should be(originalContents)
 
       // TODO: delete the file from Dropbox
+    }
+
+    scenario("Searches For Matching Files") {
+      import Implicits._
+
+      Given("A query")
+      val query = ".search_test"
+
+      And("A file that matches the query")
+      val path = UUID.randomUUID().toString + query
+      val contents = "Search Test"
+      Await result (dropbox putFile (path = path, contents = contents, length = contents length), 3 seconds)
+
+      When("A user searches with the query")
+      val metadata = Await result (dropbox search (query = query), 3 seconds)
+
+      Then("She should get metadata for any matching files")
+      metadata.size should be > 0
+      metadata.foreach(metadatum ⇒
+        inside(metadatum) {
+          case ContentMetadata(_, bytes, path, is_dir, _, _, _, _, _, _, _, _, _, _, _) ⇒
+            path should include(query)
+        }
+      )
+
+      // TODO: delete the files from Dropbox
     }
   }
 }

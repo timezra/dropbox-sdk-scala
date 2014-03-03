@@ -352,6 +352,30 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     }
   }
 
+  def search(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: Option[String] = None,
+    query: String,
+    file_limit: Option[Int] = None,
+    include_deleted: Option[Boolean] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[List[ContentMetadata]] = {
+
+    import spray.json.CollectionFormats
+    import ContentMetadataJsonProtocol.contentMetadataFormat
+    import SprayJsonSupport.sprayJsonUnmarshaller
+    import DefaultJsonProtocol._
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[List[ContentMetadata]]
+    )
+    val q = Seq(Some("query", query), file_limit map ("file_limit" -> _.toString), include_deleted map ("include_deleted" -> _.toString), locale map ("locale" -> _.toLanguageTag)) flatMap (f ⇒ f)
+    pipeline {
+      Get(Uri(Seq(Some("https://api.dropbox.com/1/search"), Some(root), path).flatten.mkString("/")) withQuery (q: _*))
+    }
+  }
+
   def shutdown(): Unit = {
     import akka.pattern.ask
     import spray.util.pimpFuture
