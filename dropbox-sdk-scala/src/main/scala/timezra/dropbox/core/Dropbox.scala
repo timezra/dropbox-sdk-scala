@@ -91,11 +91,11 @@ object LongpollMetadataJsonProtocol extends DefaultJsonProtocol {
   implicit def longpollMetadataFormat = jsonFormat2(LongpollMetadata)
 }
 
-case class SharesMetadata(url: Uri, expires: Date)
-object SharesMetadataJsonProtocol extends DefaultJsonProtocol {
+case class LinkWithExpiry(url: Uri, expires: Date)
+object LinkWithExpiryJsonProtocol extends DefaultJsonProtocol {
   import spray.http.Uri
   import JsonImplicits._
-  implicit def sharesMetadataFormat: RootJsonFormat[SharesMetadata] = jsonFormat2(SharesMetadata)
+  implicit def linkWithExpiryFormat: RootJsonFormat[LinkWithExpiry] = jsonFormat2(LinkWithExpiry)
 }
 
 case class ByteRange(start: Option[Long], end: Option[Long]) {
@@ -288,7 +288,6 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     cursor: Option[String] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[DeltaMetadata] = {
     import DeltaMetadataJsonProtocol.deltaMetadataFormat
     import SprayJsonSupport.sprayJsonUnmarshaller
-    import spray.httpx.marshalling.MultipartMarshallers._
     import spray.http.FormData
 
     val pipeline = (
@@ -353,7 +352,6 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
 
     import ContentMetadataJsonProtocol.contentMetadataFormat
     import SprayJsonSupport.sprayJsonUnmarshaller
-    import spray.httpx.marshalling.MultipartMarshallers._
     import spray.http.FormData
 
     val pipeline = (
@@ -408,18 +406,17 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
   def shares(conduit: ActorRef = IO(Http),
     root: String = "auto",
     path: String,
-    short_url: Option[Boolean] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[SharesMetadata] = {
+    short_url: Option[Boolean] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[LinkWithExpiry] = {
 
-    import SharesMetadataJsonProtocol.sharesMetadataFormat
+    import LinkWithExpiryJsonProtocol.linkWithExpiryFormat
     import SprayJsonSupport.sprayJsonUnmarshaller
-    import spray.httpx.marshalling.MultipartMarshallers._
     import spray.http.FormData
 
     val pipeline = (
       addUserAgent ~>
       addAuthorization ~>
       sendReceive(conduit) ~>
-      unmarshal[SharesMetadata]
+      unmarshal[LinkWithExpiry]
     )
     val payload = Seq(
       short_url map ("short_url" -> _.toString),
@@ -428,6 +425,27 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
 
     pipeline {
       Post(Uri(s"https://api.dropbox.com/1/shares/$root/$path"), FormData(payload))
+    }
+  }
+
+  def media(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[LinkWithExpiry] = {
+
+    import LinkWithExpiryJsonProtocol.linkWithExpiryFormat
+    import SprayJsonSupport.sprayJsonUnmarshaller
+    import spray.http.FormData
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[LinkWithExpiry]
+    )
+    val payload = Seq(locale map ("locale" -> _.toLanguageTag)) flatMap (f ⇒ f)
+
+    pipeline {
+      Post(Uri(s"https://api.dropbox.com/1/media/$root/$path"), FormData(payload))
     }
   }
 

@@ -20,19 +20,19 @@ import spray.httpx.UnsuccessfulResponseException
 import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
-class SharesSpec extends CoreSpec with Inside {
+class MediaSpec extends CoreSpec with Inside {
 
   val Root = "root"
   val Path = "test.txt"
-  val Url = Uri("https://db.tt/testurl")
+  val Url = Uri("https://dl.dropboxusercontent.com/1/view/something/Apps/my-app/test.txt")
 
-  val SharesLinkWithExpiry = LinkWithExpiry(Url, formatter.parse("Tue, 01 Jan 2030 00:00:00 +0000"))
+  val MediaLinkWithExpiry = LinkWithExpiry(Url, formatter.parse("Mon, 03 Mar 2014 10:51:47 +0000"))
   def formatter: DateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z")
 
-  val SharesLinkWithExpiryJson = s"""
+  val MediaLinkWithExpiryJson = s"""
   {
-      "url": "${SharesLinkWithExpiry.url}",
-      "expires": "${formatter.format(SharesLinkWithExpiry.expires)}"
+      "url": "${MediaLinkWithExpiry.url}",
+      "expires": "${formatter.format(MediaLinkWithExpiry.expires)}"
   }
   """
 
@@ -44,27 +44,14 @@ class SharesSpec extends CoreSpec with Inside {
     it("should make an http request") {
       val probe = ioProbe
 
-      dropbox shares (probe ref, Root, Path)
+      dropbox media (probe ref, Root, Path)
 
       val request = probe expectMsgClass classOf[HttpRequest]
       inside(request) {
         case HttpRequest(method, uri, headers, _, _) ⇒
           method should be(POST)
-          uri should be(Uri(s"https://api.dropbox.com/1/shares/$Root/$Path"))
+          uri should be(Uri(s"https://api.dropbox.com/1/media/$Root/$Path"))
           headers should be(List(authorizationHeader, userAgentHeader))
-      }
-    }
-
-    it("should request a short url") {
-      val probe = ioProbe
-      val shortUrl = true
-
-      dropbox shares (probe ref, path = Path, short_url = Some(shortUrl))
-
-      val request = probe expectMsgClass classOf[HttpRequest]
-      request match {
-        case HttpRequest(POST, _, _, HttpEntity.NonEmpty(_, Bytes(byteString)), _) ⇒
-          byteString.utf8String should include(s"short_url=$shortUrl")
       }
     }
 
@@ -72,7 +59,7 @@ class SharesSpec extends CoreSpec with Inside {
       val probe = ioProbe
 
       implicit val locale = Some(Locale.CHINA)
-      dropbox shares (probe ref, path = Path)
+      dropbox media (probe ref, path = Path)
 
       val request = probe expectMsgClass classOf[HttpRequest]
       request match {
@@ -81,23 +68,23 @@ class SharesSpec extends CoreSpec with Inside {
       }
     }
 
-    it("should return share metadata") {
+    it("should return an expiring link") {
       val probe = ioProbe
 
-      val response = dropbox shares (probe ref, path = Path)
+      val response = dropbox media (probe ref, path = Path)
 
       probe expectMsgClass classOf[HttpRequest]
-      probe reply (HttpResponse(OK, HttpEntity(`text/javascript`, SharesLinkWithExpiryJson)))
+      probe reply (HttpResponse(OK, HttpEntity(`text/javascript`, MediaLinkWithExpiryJson)))
 
-      val sharesLinkWithExpiry = await(response)
+      val mediaLinkWithExpiry = await(response)
 
-      sharesLinkWithExpiry should be(SharesLinkWithExpiry)
+      mediaLinkWithExpiry should be(MediaLinkWithExpiry)
     }
 
     it("should propagate bad request failures") {
       val probe = ioProbe
 
-      val response = dropbox shares (probe ref, path = Path)
+      val response = dropbox media (probe ref, path = Path)
 
       probe expectMsgClass classOf[HttpRequest]
       probe reply (HttpResponse(BadRequest, HttpEntity(`application/json`, BadRequestFailure)))
@@ -109,7 +96,7 @@ class SharesSpec extends CoreSpec with Inside {
     it("should propagate not found failures") {
       val probe = ioProbe
 
-      val response = dropbox shares (probe ref, path = Path)
+      val response = dropbox media (probe ref, path = Path)
 
       probe expectMsgClass classOf[HttpRequest]
       probe reply (HttpResponse(NotFound, HttpEntity(`application/json`, NotFoundFailure)))

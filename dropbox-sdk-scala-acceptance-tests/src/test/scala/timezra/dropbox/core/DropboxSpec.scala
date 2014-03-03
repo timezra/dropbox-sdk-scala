@@ -233,11 +233,23 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       val path = "test.txt"
 
       When("A user shares it")
-      val metadata = Await result (dropbox shares (path = path), 3 seconds)
+      val sharesLinkWithExpiry = Await result (dropbox shares (path = path), 3 seconds)
 
       Then("She should get a url and expiration date for it")
-      metadata.url should not be (null)
-      metadata.expires should be > new Date()
+      sharesLinkWithExpiry.url should not be (null)
+      sharesLinkWithExpiry.expires should be > new Date()
+    }
+
+    scenario("Asks For A Media Link") {
+      Given("A file in Dropbox") // TODO: upload the file to Dropbox
+      val path = "test.txt"
+
+      When("A user asks for a media link to it")
+      val mediaLinkWithExpiry = Await result (dropbox media (path = path), 3 seconds)
+
+      Then("She should get a url and expiration date for it")
+      mediaLinkWithExpiry.url should not be (null)
+      mediaLinkWithExpiry.expires should be > new Date()
     }
   }
 }

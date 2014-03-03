@@ -1,7 +1,6 @@
 package timezra.dropbox.core
 
 import org.junit.runner.RunWith
-import spray.http.ContentType.apply
 import spray.http.ContentTypes.`text/plain`
 import spray.http.HttpEntity
 import spray.http.HttpRequest

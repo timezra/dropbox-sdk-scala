@@ -5,7 +5,6 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import org.junit.runner.RunWith
 import ContentTypes.`text/javascript`
-import spray.http.ContentType.apply
 import spray.http.ContentTypes.`application/json`
 import spray.http.HttpEntity
 import spray.http.HttpRequest
