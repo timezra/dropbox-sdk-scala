@@ -1,17 +1,19 @@
 package timezra.dropbox.core
 
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 import org.junit.runner.RunWith
+import ContentTypes.`text/javascript`
+import spray.http.ContentType.apply
 import spray.http.HttpEntity
 import spray.http.HttpRequest
 import spray.http.HttpResponse
 import spray.http.StatusCodes.NotFound
 import spray.http.StatusCodes.OK
+import spray.http.Uri.apply
 import spray.httpx.UnsuccessfulResponseException
 import org.scalatest.junit.JUnitRunner
-import ContentTypes.`text/javascript`
-import java.util.Locale
-import java.text.DateFormat
-import java.text.SimpleDateFormat
 
 @RunWith(classOf[JUnitRunner])
 class RevisionsSpec extends CoreSpec {
@@ -85,7 +87,7 @@ class RevisionsSpec extends CoreSpec {
 
       val revisions = await(response)
 
-      revisions(0) should be(FileMetadata)
+      revisions.head should be(FileMetadata)
     }
 
     it("should propagate not found failures") {

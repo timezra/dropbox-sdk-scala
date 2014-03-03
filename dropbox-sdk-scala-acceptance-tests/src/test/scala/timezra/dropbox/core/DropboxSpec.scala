@@ -171,5 +171,33 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         }
       )
     }
+
+    scenario("Restores a File to a Previous Revision") {
+      import Implicits._
+
+      Given("A file in Dropbox")
+      val path = UUID.randomUUID().toString
+      val originalContents = "Original Contents"
+      Await result (dropbox putFile (path = path, contents = originalContents, length = originalContents length), 3 seconds)
+
+      When("A user changes it")
+      val newContents = "New Contents"
+      Await result (dropbox putFile (path = path, contents = newContents, length = newContents length), 3 seconds)
+
+      And("Restores it to the previous revision")
+      val revisions = Await result (dropbox revisions (path = path), 3 seconds)
+      val theFirstRevision = revisions.last
+      val revision = theFirstRevision.revision.get
+      val rev = theFirstRevision.rev.get
+      val contentMetadata: ContentMetadata = Await result (dropbox restore (path = path, rev = rev), 3 seconds)
+
+      Then("It should have its original content")
+      contentMetadata.revision.get should be > revision
+      val response = Await result (dropbox getFile (path = path), 3 seconds)
+      val actualContents = response._2.foldLeft("")(_ + _.asString)
+      actualContents should be(originalContents)
+
+      // TODO: delete the file from Dropbox
+    }
   }
 }

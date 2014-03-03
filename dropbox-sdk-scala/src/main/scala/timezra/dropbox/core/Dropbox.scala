@@ -263,7 +263,6 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     }
   }
 
-  import spray.http.BodyPart
   def delta(conduit: ActorRef = IO(Http),
     path_prefix: Option[String] = None,
     cursor: Option[String] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[DeltaMetadata] = {
@@ -324,6 +323,32 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     val q = Seq(rev_limit map ("rev_limit" -> _.toString), locale map ("locale" -> _.toLanguageTag)) flatMap (f ⇒ f)
     pipeline {
       Get(Uri(s"https://api.dropbox.com/1/revisions/$root/$path") withQuery (q: _*))
+    }
+  }
+
+  def restore(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String,
+    rev: String)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[ContentMetadata] = {
+
+    import ContentMetadataJsonProtocol.contentMetadataFormat
+    import SprayJsonSupport.sprayJsonUnmarshaller
+    import spray.httpx.marshalling.MultipartMarshallers._
+    import spray.http.FormData
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[ContentMetadata]
+    )
+    val payload = Seq(
+      Some("rev", rev),
+      locale map ("locale" -> _.toLanguageTag)
+    ) flatMap (f ⇒ f)
+
+    pipeline {
+      Post(Uri(s"https://api.dropbox.com/1/restore/$root/$path"), FormData(payload))
     }
   }
 

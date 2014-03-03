@@ -6,7 +6,7 @@ import EnumeratorT.enumInputStream
 import scalaz.effect.IO
 import spray.http.ContentTypes.`application/octet-stream`
 import spray.http.HttpEntity
-import spray.http.HttpMethods
+import spray.http.HttpMethods.POST
 import spray.http.HttpProtocols.`HTTP/1.1`
 import spray.http.HttpRequest
 import spray.http.Uri
@@ -66,7 +66,7 @@ class PostFilesSpec extends CoreSpec {
       val request = probe expectMsgClass classOf[HttpRequest]
 
       request match {
-        case HttpRequest(HttpMethods.POST, uri, headers, HttpEntity.NonEmpty(ContentType(mediaType, _), Compound(Bytes(_), Compound(FileBytes(fileName, _, _), _))), `HTTP/1.1`) ⇒
+        case HttpRequest(POST, uri, headers, HttpEntity.NonEmpty(ContentType(mediaType, _), Compound(Bytes(_), Compound(FileBytes(fileName, _, _), _))), `HTTP/1.1`) ⇒
           uri should be(Uri(s"https://api-content.dropbox.com/1/files/$Root/$Path"))
           headers should (contain(authorizationHeader) and contain(userAgentHeader))
           mediaType.isMultipart should be(true)
