@@ -352,13 +352,18 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     }
   }
 
+  import spray.http.HttpMethod
+  import spray.http.HttpMethods.GET
   def search(conduit: ActorRef = IO(Http),
     root: String = "auto",
     path: Option[String] = None,
     query: String,
     file_limit: Option[Int] = None,
-    include_deleted: Option[Boolean] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[List[ContentMetadata]] = {
+    include_deleted: Option[Boolean] = None,
+    method: HttpMethod = GET)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[List[ContentMetadata]] = {
 
+    import spray.http.FormData
+    import spray.http.HttpMethods.POST
     import spray.json.CollectionFormats
     import ContentMetadataJsonProtocol.contentMetadataFormat
     import SprayJsonSupport.sprayJsonUnmarshaller
@@ -370,9 +375,13 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
       sendReceive(conduit) ~>
       unmarshal[List[ContentMetadata]]
     )
-    val q = Seq(Some("query", query), file_limit map ("file_limit" -> _.toString), include_deleted map ("include_deleted" -> _.toString), locale map ("locale" -> _.toLanguageTag)) flatMap (f ⇒ f)
+    val payload = Seq(Some("query", query), file_limit map ("file_limit" -> _.toString), include_deleted map ("include_deleted" -> _.toString), locale map ("locale" -> _.toLanguageTag)) flatMap (f ⇒ f)
+    val searchUri = Uri(Seq(Some("https://api.dropbox.com/1/search"), Some(root), path).flatten.mkString("/"))
     pipeline {
-      Get(Uri(Seq(Some("https://api.dropbox.com/1/search"), Some(root), path).flatten.mkString("/")) withQuery (q: _*))
+      method match {
+        case GET ⇒ Get(searchUri withQuery (payload: _*))
+        case POST ⇒ Post(searchUri, FormData(payload))
+      }
     }
   }
 

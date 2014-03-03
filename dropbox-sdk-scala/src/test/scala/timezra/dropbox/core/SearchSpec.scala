@@ -9,15 +9,19 @@ import spray.http.ContentType.apply
 import spray.http.ContentTypes.`application/json`
 import spray.http.HttpEntity
 import spray.http.HttpRequest
+import spray.http.HttpMethods.POST
 import spray.http.HttpResponse
 import spray.http.StatusCodes.BadRequest
 import spray.http.StatusCodes.OK
 import spray.http.Uri.apply
 import spray.httpx.UnsuccessfulResponseException
 import org.scalatest.junit.JUnitRunner
+import org.scalatest.Inside
+import spray.http.Uri
+import spray.http.HttpData.Bytes
 
 @RunWith(classOf[JUnitRunner])
-class SearchSpec extends CoreSpec {
+class SearchSpec extends CoreSpec with Inside {
 
   val Root = "root"
   val Path = "test.txt"
@@ -48,7 +52,7 @@ class SearchSpec extends CoreSpec {
 
   val BadRequestFailure = s"""{"error": {"query": "Please enter a value"}}"""
 
-  describe("Search") {
+  describe("Search (GET)") {
 
     it("should make a GET request") {
       val probe = ioProbe
@@ -106,6 +110,86 @@ class SearchSpec extends CoreSpec {
       val probe = ioProbe
 
       val response = dropbox search (probe ref, query = Query)
+
+      probe expectMsgClass classOf[HttpRequest]
+      probe reply (HttpResponse(BadRequest, HttpEntity(`application/json`, BadRequestFailure)))
+
+      val error = intercept[UnsuccessfulResponseException] { await(response) }
+      error.getMessage should be(s"Status: $BadRequest\nBody: $BadRequestFailure")
+    }
+  }
+
+  describe("Search (POST)") {
+
+    it("should make a POST request") {
+      val probe = ioProbe
+
+      dropbox search (probe ref, method = POST, root = Root, path = Some(Path), query = Query)
+
+      val request = probe expectMsgClass classOf[HttpRequest]
+      inside(request) {
+        case HttpRequest(method, uri, headers, _, _) ⇒
+          method should be(POST)
+          uri should be(Uri(s"https://api.dropbox.com/1/search/$Root/$Path"))
+          headers should be(List(authorizationHeader, userAgentHeader))
+      }
+    }
+
+    it("should request a specific file limit") {
+      val probe = ioProbe
+
+      dropbox search (probe ref, method = POST, query = Query, file_limit = Some(FileLimit))
+
+      val request = probe expectMsgClass classOf[HttpRequest]
+      request match {
+        case HttpRequest(POST, _, _, HttpEntity.NonEmpty(_, Bytes(byteString)), _) ⇒
+          byteString.utf8String should include(s"file_limit=$FileLimit")
+      }
+    }
+
+    it("should request that deleted entries be included") {
+      val probe = ioProbe
+      val includeDeleted = true
+
+      dropbox search (probe ref, method = POST, query = Query, include_deleted = Some(includeDeleted))
+
+      val request = probe expectMsgClass classOf[HttpRequest]
+      request match {
+        case HttpRequest(POST, _, _, HttpEntity.NonEmpty(_, Bytes(byteString)), _) ⇒
+          byteString.utf8String should include(s"include_deleted=${includeDeleted.toString}")
+      }
+    }
+
+    it("should request language specific text") {
+      val probe = ioProbe
+
+      implicit val locale = Some(Locale.CHINA)
+      dropbox search (probe ref, method = POST, query = Query)
+
+      val request = probe expectMsgClass classOf[HttpRequest]
+      request match {
+        case HttpRequest(POST, _, _, HttpEntity.NonEmpty(_, Bytes(byteString)), _) ⇒
+          byteString.utf8String should include(s"locale=${locale.get.toLanguageTag}")
+      }
+    }
+
+    it("should return file content metadata") {
+      val probe = ioProbe
+
+      val response = dropbox search (probe ref, method = POST, query = Query)
+
+      probe expectMsgClass classOf[HttpRequest]
+      probe reply (HttpResponse(OK, HttpEntity(`text/javascript`, SearchMetadataJson)))
+
+      val revisions = await(response)
+
+      revisions.head should be(FileMetadata)
+    }
+
+    it("should propagate bad request failures") {
+      val probe = ioProbe
+
+      val response = dropbox search (probe ref, method = POST, query = Query)
 
       probe expectMsgClass classOf[HttpRequest]
       probe reply (HttpResponse(BadRequest, HttpEntity(`application/json`, BadRequestFailure)))
