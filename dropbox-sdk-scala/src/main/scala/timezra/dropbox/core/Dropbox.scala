@@ -51,8 +51,7 @@ object AccountInfoJsonProtocol extends DefaultJsonProtocol {
   implicit def accountInfoFormat = jsonFormat6(AccountInfo)
 }
 
-case class ContentMetadata(size: String, bytes: Long, path: String, is_dir: Boolean, is_deleted: Option[Boolean], rev: Option[String], hash: Option[String], thumb_exists: Boolean, icon: String, modified: Option[Date], client_mtime: Option[Date], root: String, mime_type: Option[String], revision: Option[Long], contents: Option[List[ContentMetadata]])
-object ContentMetadataJsonProtocol extends DefaultJsonProtocol {
+object JsonImplicits {
   implicit object DateJsonFormat extends RootJsonFormat[Date] {
     def write(date: Date) = {
       JsString(formatter format date)
@@ -64,6 +63,20 @@ object ContentMetadataJsonProtocol extends DefaultJsonProtocol {
     }
     def formatter: DateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z")
   }
+
+  implicit object UriJsonFormat extends RootJsonFormat[Uri] {
+    def write(uri: Uri) = JsString(uri.toString)
+    def read(value: JsValue) = value match {
+      case null ⇒ null
+      case JsString(uri) ⇒ Uri(uri)
+      case _ ⇒ throw new DeserializationException("Expected URI")
+    }
+  }
+}
+
+case class ContentMetadata(size: String, bytes: Long, path: String, is_dir: Boolean, is_deleted: Option[Boolean], rev: Option[String], hash: Option[String], thumb_exists: Boolean, icon: String, modified: Option[Date], client_mtime: Option[Date], root: String, mime_type: Option[String], revision: Option[Long], contents: Option[List[ContentMetadata]])
+object ContentMetadataJsonProtocol extends DefaultJsonProtocol {
+  import JsonImplicits._
   implicit def contentMetadataFormat: RootJsonFormat[ContentMetadata] = rootFormat(lazyFormat(jsonFormat15(ContentMetadata)))
 }
 
@@ -76,6 +89,13 @@ object DeltaMetadataJsonProtocol extends DefaultJsonProtocol {
 case class LongpollMetadata(changes: Boolean, backoff: Option[Int])
 object LongpollMetadataJsonProtocol extends DefaultJsonProtocol {
   implicit def longpollMetadataFormat = jsonFormat2(LongpollMetadata)
+}
+
+case class SharesMetadata(url: Uri, expires: Date)
+object SharesMetadataJsonProtocol extends DefaultJsonProtocol {
+  import spray.http.Uri
+  import JsonImplicits._
+  implicit def sharesMetadataFormat: RootJsonFormat[SharesMetadata] = jsonFormat2(SharesMetadata)
 }
 
 case class ByteRange(start: Option[Long], end: Option[Long]) {
@@ -382,6 +402,32 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
         case GET ⇒ Get(searchUri withQuery (payload: _*))
         case POST ⇒ Post(searchUri, FormData(payload))
       }
+    }
+  }
+
+  def shares(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String,
+    short_url: Option[Boolean] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[SharesMetadata] = {
+
+    import SharesMetadataJsonProtocol.sharesMetadataFormat
+    import SprayJsonSupport.sprayJsonUnmarshaller
+    import spray.httpx.marshalling.MultipartMarshallers._
+    import spray.http.FormData
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[SharesMetadata]
+    )
+    val payload = Seq(
+      short_url map ("short_url" -> _.toString),
+      locale map ("locale" -> _.toLanguageTag)
+    ) flatMap (f ⇒ f)
+
+    pipeline {
+      Post(Uri(s"https://api.dropbox.com/1/shares/$root/$path"), FormData(payload))
     }
   }
 

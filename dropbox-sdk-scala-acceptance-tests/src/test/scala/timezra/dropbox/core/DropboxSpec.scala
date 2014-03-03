@@ -14,6 +14,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.ConfigMap
 import java.util.UUID
 import org.scalatest.Inside
+import java.util.Date
 
 @RunWith(classOf[JUnitRunner])
 class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with Matchers with Inside {
@@ -225,6 +226,18 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       )
 
       // TODO: delete the files from Dropbox
+    }
+
+    scenario("Shares A File") {
+      Given("A file in Dropbox") // TODO: upload the file to Dropbox
+      val path = "test.txt"
+
+      When("A user shares it")
+      val metadata = Await result (dropbox shares (path = path), 3 seconds)
+
+      Then("She should get a url and expiration date for it")
+      metadata.url should not be (null)
+      metadata.expires should be > new Date()
     }
   }
 }

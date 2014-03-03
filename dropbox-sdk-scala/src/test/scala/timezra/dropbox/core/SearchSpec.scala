@@ -156,7 +156,7 @@ class SearchSpec extends CoreSpec with Inside {
       val request = probe expectMsgClass classOf[HttpRequest]
       request match {
         case HttpRequest(POST, _, _, HttpEntity.NonEmpty(_, Bytes(byteString)), _) ⇒
-          byteString.utf8String should include(s"include_deleted=${includeDeleted.toString}")
+          byteString.utf8String should include(s"include_deleted=$includeDeleted")
       }
     }
 
