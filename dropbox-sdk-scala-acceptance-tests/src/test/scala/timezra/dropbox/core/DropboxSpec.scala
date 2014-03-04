@@ -251,5 +251,17 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       mediaLinkWithExpiry.url should not be (null)
       mediaLinkWithExpiry.expires should be > new Date()
     }
+
+    scenario("Asks For A Copy Reference") {
+      Given("A file in Dropbox") // TODO: upload the file to Dropbox
+      val path = "test.txt"
+
+      When("A user asks for a reference to copy it")
+      val referenceWithExpiry = Await result (dropbox copy_ref (path = path), 3 seconds)
+
+      Then("She should get an id and expiration date for it")
+      referenceWithExpiry.copy_ref should not be (null)
+      referenceWithExpiry.expires should be > new Date()
+    }
   }
 }

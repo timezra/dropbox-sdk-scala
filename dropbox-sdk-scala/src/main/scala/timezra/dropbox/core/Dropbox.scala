@@ -98,6 +98,12 @@ object LinkWithExpiryJsonProtocol extends DefaultJsonProtocol {
   implicit def linkWithExpiryFormat: RootJsonFormat[LinkWithExpiry] = jsonFormat2(LinkWithExpiry)
 }
 
+case class ReferenceWithExpiry(copy_ref: String, expires: Date)
+object ReferenceWithExpiryJsonProtocol extends DefaultJsonProtocol {
+  import JsonImplicits._
+  implicit def referenceWithExpiryFormat: RootJsonFormat[ReferenceWithExpiry] = jsonFormat2(ReferenceWithExpiry)
+}
+
 case class ByteRange(start: Option[Long], end: Option[Long]) {
   require(start.isDefined || end.isDefined)
 
@@ -446,6 +452,25 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
 
     pipeline {
       Post(Uri(s"https://api.dropbox.com/1/media/$root/$path"), FormData(payload))
+    }
+  }
+
+  def copy_ref(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String)(implicit timeout: Timeout = 60 seconds): Future[ReferenceWithExpiry] = {
+
+    import ReferenceWithExpiryJsonProtocol.referenceWithExpiryFormat
+    import SprayJsonSupport.sprayJsonUnmarshaller
+    import DefaultJsonProtocol._
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[ReferenceWithExpiry]
+    )
+    pipeline {
+      Get(Uri(s"https://api.dropbox.com/1/copy_ref/$root/$path"))
     }
   }
 
