@@ -15,6 +15,7 @@ import org.scalatest.ConfigMap
 import java.util.UUID
 import org.scalatest.Inside
 import java.util.Date
+import scala.collection.mutable.ArrayBuffer
 
 @RunWith(classOf[JUnitRunner])
 class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with Matchers with Inside {
@@ -56,6 +57,11 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       Then("She should get its contents")
       val actualContents = response._2.foldLeft("")(_ + _.asString)
       actualContents should be(expectedContents)
+      And("Its metadata")
+      val contentMetadata = response._1
+      contentMetadata.is_dir should be(false)
+      contentMetadata.bytes should be > 0L
+      contentMetadata.path should be(s"/$path")
     }
 
     scenario("Puts a file") {
@@ -262,6 +268,22 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       Then("She should get an id and expiration date for it")
       referenceWithExpiry.copy_ref should not be (null)
       referenceWithExpiry.expires should be > new Date()
+    }
+
+    scenario("Asks For A Thumbnail") {
+      Given("A picture in Dropbox") // TODO: upload the file to Dropbox
+      val path = "test.png"
+
+      When("A user asks for a thumbnail of it")
+      val response = Await result (dropbox thumbnails (path = path), 3 seconds)
+
+      Then("She should get its contents")
+      val actualContents: ArrayBuffer[Byte] = response._2.foldLeft(new ArrayBuffer[Byte]())(_ ++= _.toByteArray)
+      actualContents.length should be > 0
+      And("Its metadata")
+      val contentMetadata = response._1
+      contentMetadata.is_dir should be(false)
+      contentMetadata.bytes should be > 0L
     }
   }
 }

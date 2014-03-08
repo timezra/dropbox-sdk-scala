@@ -114,7 +114,26 @@ object ContentTypes {
   import spray.http.MediaType
   import spray.http.MediaTypes
   val `text/javascript` = MediaType custom ("text", "javascript", true, true)
+  val `image/png` = MediaType custom ("image", "png", true, true)
+  val `image/jpeg` = MediaType custom ("image", "jpeg", true, true)
   MediaTypes register `text/javascript`
+  MediaTypes register `image/png`
+  MediaTypes register `image/jpeg`
+}
+
+object Format extends Enumeration {
+  type Format = Value
+  val jpeg = Value("jpeg")
+  val png = Value("png")
+}
+
+object Size extends Enumeration {
+  type Size = Value
+  val xs = Value("xs")
+  val s = Value("s")
+  val m = Value("m")
+  val l = Value("l")
+  val xl = Value("xl")
 }
 
 object Dropbox {
@@ -471,6 +490,35 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     )
     pipeline {
       Get(Uri(s"https://api.dropbox.com/1/copy_ref/$root/$path"))
+    }
+  }
+
+  import Format._
+  import Size._
+  def thumbnails(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String,
+    format: Option[Format] = None,
+    size: Option[Size] = None)(implicit timeout: Timeout = 15 minutes, maxChunkSize: Long = 1048576): Future[Tuple2[ContentMetadata, Stream[HttpData]]] = {
+    implicit val FileUnmarshaller = new FromResponseUnmarshaller[Tuple2[ContentMetadata, Stream[HttpData]]] {
+      import spray.json._
+      import DefaultJsonProtocol._
+      import ContentMetadataJsonProtocol.contentMetadataFormat
+
+      def apply(response: HttpResponse) = {
+        val metadataHeader = response.headers.find(_.name == "x-dropbox-metadata")
+        Right(Tuple2(metadataHeader.get.value.asJson.convertTo, response.entity.data.toChunkStream(maxChunkSize)))
+      }
+    }
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[(ContentMetadata, Stream[HttpData])]
+    )
+    val q = Seq(format map ("format" -> _.toString), size map ("size" -> _.toString)) flatMap (f ⇒ f)
+    pipeline {
+      Get(Uri(s"https://api-content.dropbox.com/1/thumbnails/$root/$path") withQuery (q: _*))
     }
   }
 
