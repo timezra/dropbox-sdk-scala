@@ -341,5 +341,19 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       copiedContents should be(originalContents)
       // TODO: Delete the file from Dropbox
     }
+
+    scenario("Creates a folder") {
+      Given("A Dropbox root folder")
+
+      When("A creates a folder relative to it")
+      val path = UUID.randomUUID().toString
+      val response = Await result (dropbox create_folder (path = path), 3 seconds)
+
+      Then("The folder should exist")
+      response.is_dir should be(true)
+      response.path should be(s"/$path")
+      response.contents.isDefined should be(false)
+      // TODO: Delete the folder from Dropbox
+    }
   }
 }

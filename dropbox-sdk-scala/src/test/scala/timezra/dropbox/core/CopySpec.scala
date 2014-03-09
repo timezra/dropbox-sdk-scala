@@ -53,7 +53,7 @@ class CopySpec extends CoreSpec with Inside {
   val NotAcceptableFailure = s"""{"error": "Too many files"}"""
   val BadRequestFailure = s"""{"error": "Must send either a from_path or a from_copy_ref"}"""
 
-  describe("CopyRef") {
+  describe("Copy") {
 
     it("should make an http request") {
       val probe = ioProbe

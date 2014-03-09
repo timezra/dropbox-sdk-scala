@@ -603,6 +603,31 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     }
   }
 
+  def create_folder(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[ContentMetadata] = {
+
+    import ContentMetadataJsonProtocol.contentMetadataFormat
+    import SprayJsonSupport.sprayJsonUnmarshaller
+    import spray.http.FormData
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[ContentMetadata]
+    )
+    val payload = Seq(
+      Some("root", root),
+      Some("path", path),
+      locale map ("locale" -> _.toLanguageTag)
+    ) flatMap (f ⇒ f)
+
+    pipeline {
+      Post(Uri("https://api.dropbox.com/1/fileops/create_folder"), FormData(payload))
+    }
+  }
+
   def shutdown(): Unit = {
     import akka.pattern.ask
     import spray.util.pimpFuture
