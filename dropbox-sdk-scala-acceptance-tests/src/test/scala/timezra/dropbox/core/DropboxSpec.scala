@@ -285,5 +285,30 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       contentMetadata.is_dir should be(false)
       contentMetadata.bytes should be > 0L
     }
+
+    scenario("Uploads a file in chunks") {
+      import Implicits._
+
+      Given("Some file contents")
+      val theFirstChunk = "Dropbox SDK"
+      val theSecondChunk = " Scala Test.\n"
+      val path = "test_chunk.txt"
+
+      When("A user uploads part of the file")
+      val response = Await result (dropbox chunked_upload (contents = theFirstChunk), 3 seconds)
+
+      And("Uploads the rest of the file")
+      val uploadId = response.upload_id
+      val offset = response.offset
+      Await result (dropbox chunked_upload (contents = theSecondChunk, idAndOffset = Some(uploadId, offset)), 3 seconds)
+
+      And("Commits the file upload")
+      Await result (dropbox commit_chunked_upload (path = path, upload_id = uploadId), 3 seconds)
+
+      Then("That file should be in Dropbox")
+      val actualContents = (Await result (dropbox getFile (path = path), 3 seconds))._2.foldLeft("")(_ + _.asString)
+      actualContents should be(theFirstChunk + theSecondChunk)
+      // TODO: Delete the file from Dropbox
+    }
   }
 }

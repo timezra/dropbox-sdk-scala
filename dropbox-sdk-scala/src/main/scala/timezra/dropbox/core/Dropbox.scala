@@ -104,6 +104,12 @@ object ReferenceWithExpiryJsonProtocol extends DefaultJsonProtocol {
   implicit def referenceWithExpiryFormat: RootJsonFormat[ReferenceWithExpiry] = jsonFormat2(ReferenceWithExpiry)
 }
 
+case class UploadWithExpiry(upload_id: String, offset: Long, expires: Date)
+object UploadWithExpiryJsonProtocol extends DefaultJsonProtocol {
+  import JsonImplicits._
+  implicit def uploadWithExpiryFormat: RootJsonFormat[UploadWithExpiry] = jsonFormat3(UploadWithExpiry)
+}
+
 case class ByteRange(start: Option[Long], end: Option[Long]) {
   require(start.isDefined || end.isDefined)
 
@@ -519,6 +525,52 @@ class Dropbox(clientIdentifier: String, accessToken: String) {
     val q = Seq(format map ("format" -> _.toString), size map ("size" -> _.toString)) flatMap (f ⇒ f)
     pipeline {
       Get(Uri(s"https://api-content.dropbox.com/1/thumbnails/$root/$path") withQuery (q: _*))
+    }
+  }
+
+  import scalaz.effect.IoExceptionOr
+  import scalaz.iteratee.EnumeratorT
+  import scalaz.effect.{ IO ⇒ zIO }
+  def chunked_upload(conduit: ActorRef = IO(Http),
+    contents: EnumeratorT[IoExceptionOr[(Array[Byte], Int)], zIO],
+    idAndOffset: Option[Tuple2[String, Long]] = None)(implicit timeout: Timeout = 15 minutes): Future[UploadWithExpiry] = {
+    import UploadWithExpiryJsonProtocol.uploadWithExpiryFormat
+    import SprayJsonSupport.sprayJsonUnmarshaller
+    import MetaMarshallers._
+    import Arrays._
+
+    implicit def boundArray2HttpData(t: (Array[Byte], Int)): HttpData = HttpData(t._1 takeT t._2)
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[UploadWithExpiry]
+    )
+    val q = Seq(idAndOffset map ("upload_id" -> _._1), idAndOffset map ("offset" -> _._2.toString)) flatMap (f ⇒ f)
+    pipeline {
+      Put(Uri(s"https://api-content.dropbox.com/1/chunked_upload") withQuery (q: _*), contents)
+    }
+  }
+
+  def commit_chunked_upload(conduit: ActorRef = IO(Http),
+    root: String = "auto",
+    path: String,
+    upload_id: String,
+    parent_rev: Option[String] = None,
+    overwrite: Option[Boolean] = None)(implicit timeout: Timeout = 60 seconds, locale: Option[Locale] = None): Future[ContentMetadata] = {
+    import ContentMetadataJsonProtocol.contentMetadataFormat
+    import SprayJsonSupport.sprayJsonUnmarshaller
+
+    val pipeline = (
+      addUserAgent ~>
+      addAuthorization ~>
+      sendReceive(conduit) ~>
+      unmarshal[ContentMetadata]
+    )
+    val q = Seq(Some("upload_id", upload_id), parent_rev map ("parent_rev" ->), overwrite map ("overwrite" -> _.toString), locale map ("locale" -> _.toLanguageTag)) flatMap (f ⇒ f)
+    pipeline {
+      Post(Uri(s"https://api-content.dropbox.com/1/commit_chunked_upload/$root/$path") withQuery (q: _*))
     }
   }
 
