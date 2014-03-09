@@ -310,5 +310,36 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       actualContents should be(theFirstChunk + theSecondChunk)
       // TODO: Delete the file from Dropbox
     }
+
+    scenario("Copies a file") {
+      Given("A file in Dropbox") // TODO: upload the file to Dropbox
+      val copyFromPath = "test.txt"
+
+      When("A user copies it")
+      val copyToPath = UUID.randomUUID().toString + "_copy.txt"
+      Await result (dropbox copy (to_path = copyToPath, from_path = Some(copyFromPath)), 3 seconds)
+
+      Then("The copied file should be the same as the original")
+      val originalContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
+      val copiedContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
+      copiedContents should be(originalContents)
+      // TODO: Delete the file from Dropbox
+    }
+
+    scenario("Copies a file from a reference") {
+      Given("A reference to a file in Dropbox") // TODO: upload the file to Dropbox
+      val copyFromPath = "test.txt"
+      val referenceWithExpiry = Await result (dropbox copy_ref (path = copyFromPath), 3 seconds)
+
+      When("A user copies it")
+      val copyToPath = UUID.randomUUID().toString + "_copy.txt"
+      Await result (dropbox copy (to_path = copyToPath, from_copy_ref = Some(referenceWithExpiry.copy_ref)), 3 seconds)
+
+      Then("The copied file should be the same as the original")
+      val originalContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
+      val copiedContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
+      copiedContents should be(originalContents)
+      // TODO: Delete the file from Dropbox
+    }
   }
 }

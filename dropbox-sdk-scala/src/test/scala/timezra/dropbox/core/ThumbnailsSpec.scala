@@ -26,8 +26,8 @@ class ThumbnailsSpec extends CoreSpec {
   val JPEG = Array[Byte](15, 15, 13, 8, 15, 15, 14, 0, 0, 0, 1, 0, 4, 10, 4, 6, 4, 9, 4, 6, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 4, 8, 0, 0, 4, 8, 0, 0, 0, 0, 15, 15, 13, 11, 0, 0, 4, 3, 0, 0, 0, 3, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 3, 0, 2, 0, 2, 0, 2, 0, 3, 0, 3, 0, 3, 0, 3, 0, 4, 0, 6, 0, 4, 0, 4, 0, 4, 0, 4, 0, 4, 0, 8, 0, 6, 0, 6, 0, 5, 0, 6, 0, 9, 0, 8, 0, 10, 0, 10, 0, 9, 0, 8, 0, 9, 0, 9, 0, 10, 0, 12, 0, 15, 0, 12, 0, 10, 0, 11, 0, 14, 0, 11, 0, 9, 0, 9, 0, 13, 1, 1, 0, 13, 0, 14, 0, 15, 1, 0, 1, 0, 1, 1, 1, 0, 0, 10, 0, 12, 1, 2, 1, 3, 1, 2, 1, 0, 1, 3, 0, 15, 1, 0, 1, 0, 1, 0, 15, 15, 12, 9, 0, 0, 0, 11, 0, 8, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 15, 15, 12, 12, 0, 0, 0, 6, 0, 0, 1, 0, 1, 0, 0, 5, 15, 15, 13, 10, 0, 0, 0, 8, 0, 1, 0, 1, 0, 0, 0, 0, 3, 15, 0, 0, 13, 2, 12, 15, 2, 0, 15, 15, 13, 9)
   val PNG = Array[Byte](8, 9, 80, 78, 71, 13, 10, 26, 10)
 
-  val Metadata = ContentMetadata("8.3 KB", 8545, s"/$Path", false, None, Some("rev"), None, true, "icon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), Some(formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000")), Root, Some("mime_type"), Some(1), None)
   def formatter: DateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z")
+  val Metadata = ContentMetadata("8.3 KB", 8545, s"/$Path", false, None, Some("rev"), None, true, "icon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), Some(formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000")), Root, Some("mime_type"), Some(1), None)
   val ContentMetadataJson = s"""
   {
       "size": "${Metadata.size}",

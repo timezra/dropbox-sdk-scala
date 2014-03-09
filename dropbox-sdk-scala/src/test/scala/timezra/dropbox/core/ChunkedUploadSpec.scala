@@ -1,25 +1,23 @@
 package timezra.dropbox.core
 
-import java.io.ByteArrayInputStream
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 import org.junit.runner.RunWith
-import EnumeratorT.enumInputStream
-import scalaz.effect.IO
-import spray.http.ContentTypes.`application/octet-stream`
+import ContentTypes.`text/javascript`
+import Implicits.string2Enum
 import spray.http.ContentTypes.`application/json`
+import spray.http.ContentTypes.`application/octet-stream`
 import spray.http.HttpEntity
 import spray.http.HttpMethods
 import spray.http.HttpProtocols.`HTTP/1.1`
 import spray.http.HttpRequest
-import spray.http.Uri
-import spray.http.StatusCodes.NotFound
-import spray.http.StatusCodes.BadRequest
-import org.scalatest.junit.JUnitRunner
-import java.text.DateFormat
-import java.text.SimpleDateFormat
 import spray.http.HttpResponse
-import ContentTypes.`text/javascript`
-import java.util.Locale
+import spray.http.StatusCodes.BadRequest
+import spray.http.StatusCodes.NotFound
+import spray.http.Uri
 import spray.httpx.UnsuccessfulResponseException
+import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class ChunkedUploadSpec extends CoreSpec {
