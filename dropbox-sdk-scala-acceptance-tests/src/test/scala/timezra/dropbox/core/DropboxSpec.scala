@@ -345,7 +345,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
     scenario("Creates a folder") {
       Given("A Dropbox root folder")
 
-      When("A creates a folder relative to it")
+      When("A user creates a folder relative to it")
       val path = UUID.randomUUID().toString
       val response = Await result (dropbox create_folder (path = path), 3 seconds)
 
@@ -354,6 +354,24 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       response.path should be(s"/$path")
       response.contents.isDefined should be(false)
       // TODO: Delete the folder from Dropbox
+    }
+
+    scenario("Deletes a file") {
+      import Implicits._
+
+      Given("A file in Dropbox")
+      val path = UUID.randomUUID().toString
+      val contents = "Dropbox SDK Scala Test.\n"
+      Await result (dropbox putFile (path = path, contents = contents, length = contents length), 3 seconds)
+
+      When("A user deletes it")
+      val response = Await result (dropbox delete (path = path), 3 seconds)
+
+      Then("The file should no longer exist")
+      response.is_deleted.get should be(true)
+      response.bytes should be(0)
+      response.path should be(s"/$path")
+      response.is_dir should be(false)
     }
   }
 }
