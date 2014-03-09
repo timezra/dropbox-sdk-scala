@@ -22,15 +22,14 @@ import spray.httpx.UnsuccessfulResponseException
 import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
-class CopySpec extends CoreSpec with Inside {
+class MoveSpec extends CoreSpec with Inside {
 
   val Root = "root"
-  val CopyFromPath = "test.txt"
-  val CopyToPath = "test_copy.txt"
-  val CopyRef = "copyRef"
+  val MoveFromPath = "test.txt"
+  val MoveToPath = "test.txt"
 
   def formatter: DateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z")
-  val Metadata = ContentMetadata("8.3 KB", 8545, s"/$CopyToPath", false, None, Some("rev"), None, true, "icon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), Some(formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000")), Root, Some("mime_type"), Some(1), None)
+  val Metadata = ContentMetadata("8.3 KB", 8545, s"/$MoveToPath", false, None, Some("rev"), None, true, "icon", Some(formatter.parse("Mon, 18 Jul 2011 20:13:43 +0000")), Some(formatter.parse("Wed, 20 Apr 2011 16:20:19 +0000")), Root, Some("mime_type"), Some(1), None)
   val ContentMetadataJson = s"""
   {
       "size": "${Metadata.size}",
@@ -53,27 +52,27 @@ class CopySpec extends CoreSpec with Inside {
   val NotAcceptableFailure = s"""{"error": "Too many files"}"""
   val BadRequestFailure = s"""{"error": "Must send either a from_path or a from_copy_ref"}"""
 
-  describe("Copy") {
+  describe("Move") {
 
     it("should make an http request") {
       val probe = ioProbe
 
-      dropbox copy (probe ref, Root, CopyToPath, Some(CopyFromPath))
+      dropbox move (probe ref, Root, MoveToPath, MoveFromPath)
 
       val request = probe expectMsgClass classOf[HttpRequest]
 
       request match {
         case HttpRequest(method, uri, headers, _, _) ⇒
           method should be(POST)
-          uri should be(Uri("https://api.dropbox.com/1/fileops/copy"))
+          uri should be(Uri("https://api.dropbox.com/1/fileops/move"))
           headers should (contain(authorizationHeader) and contain(userAgentHeader))
       }
     }
 
-    it("should copy a file relative to a root") {
+    it("should move a file relative to a root") {
       val probe = ioProbe
 
-      dropbox copy (probe ref, Root, CopyToPath, Some(CopyFromPath))
+      dropbox move (probe ref, Root, MoveToPath, MoveFromPath)
 
       val request = probe expectMsgClass classOf[HttpRequest]
       request match {
@@ -82,39 +81,27 @@ class CopySpec extends CoreSpec with Inside {
       }
     }
 
-    it("should copy to a file location") {
+    it("should move a file to a location") {
       val probe = ioProbe
 
-      dropbox copy (probe ref, to_path = CopyToPath, from_path = Some(CopyFromPath))
+      dropbox move (probe ref, to_path = MoveToPath, from_path = MoveFromPath)
 
       val request = probe expectMsgClass classOf[HttpRequest]
       request match {
         case HttpRequest(POST, _, _, HttpEntity.NonEmpty(_, Bytes(byteString)), _) ⇒
-          byteString.utf8String should include(s"to_path=$CopyToPath")
+          byteString.utf8String should include(s"to_path=$MoveToPath")
       }
     }
 
-    it("should copy from a file location") {
+    it("should move a file from a location") {
       val probe = ioProbe
 
-      dropbox copy (probe ref, to_path = CopyToPath, from_path = Some(CopyFromPath))
+      dropbox move (probe ref, to_path = MoveToPath, from_path = MoveFromPath)
 
       val request = probe expectMsgClass classOf[HttpRequest]
       request match {
         case HttpRequest(POST, _, _, HttpEntity.NonEmpty(_, Bytes(byteString)), _) ⇒
-          byteString.utf8String should include(s"from_path=$CopyFromPath")
-      }
-    }
-
-    it("should copy from a reference") {
-      val probe = ioProbe
-
-      dropbox copy (probe ref, to_path = CopyToPath, from_copy_ref = Some(CopyRef))
-
-      val request = probe expectMsgClass classOf[HttpRequest]
-      request match {
-        case HttpRequest(POST, _, _, HttpEntity.NonEmpty(_, Bytes(byteString)), _) ⇒
-          byteString.utf8String should include(s"from_copy_ref=$CopyRef")
+          byteString.utf8String should include(s"from_path=$MoveFromPath")
       }
     }
 
@@ -122,7 +109,7 @@ class CopySpec extends CoreSpec with Inside {
       val probe = ioProbe
 
       implicit val locale = Some(Locale.CHINA)
-      dropbox copy (probe ref, to_path = CopyToPath, from_path = Some(CopyFromPath))
+      dropbox move (probe ref, to_path = MoveToPath, from_path = MoveFromPath)
 
       val request = probe expectMsgClass classOf[HttpRequest]
       request match {
@@ -131,10 +118,10 @@ class CopySpec extends CoreSpec with Inside {
       }
     }
 
-    it("should return metadata for the copied file") {
+    it("should return metadata for the moved file") {
       val probe = ioProbe
 
-      val response = dropbox copy (probe ref, to_path = CopyToPath, from_path = Some(CopyFromPath))
+      val response = dropbox move (probe ref, to_path = MoveToPath, from_path = MoveFromPath)
 
       probe expectMsgClass classOf[HttpRequest]
       probe reply (HttpResponse(OK, HttpEntity(`text/javascript`, ContentMetadataJson)))
@@ -147,7 +134,7 @@ class CopySpec extends CoreSpec with Inside {
     it("should propagate not found failures") {
       val probe = ioProbe
 
-      val response = dropbox copy (probe ref, to_path = CopyToPath, from_path = Some(CopyFromPath))
+      val response = dropbox move (probe ref, to_path = MoveToPath, from_path = MoveFromPath)
 
       probe expectMsgClass classOf[HttpRequest]
       probe reply (HttpResponse(NotFound, HttpEntity(`application/json`, NotFoundFailure)))
@@ -159,7 +146,7 @@ class CopySpec extends CoreSpec with Inside {
     it("should propagate forbidden failures") {
       val probe = ioProbe
 
-      val response = dropbox copy (probe ref, to_path = CopyToPath, from_path = Some(CopyFromPath))
+      val response = dropbox move (probe ref, to_path = MoveToPath, from_path = MoveFromPath)
 
       probe expectMsgClass classOf[HttpRequest]
       probe reply (HttpResponse(Forbidden, HttpEntity(`application/json`, ForbiddenFailure)))
@@ -171,7 +158,7 @@ class CopySpec extends CoreSpec with Inside {
     it("should propagate too many files failures") {
       val probe = ioProbe
 
-      val response = dropbox copy (probe ref, to_path = CopyToPath, from_path = Some(CopyFromPath))
+      val response = dropbox move (probe ref, to_path = MoveToPath, from_path = MoveFromPath)
 
       probe expectMsgClass classOf[HttpRequest]
       probe reply (HttpResponse(NotAcceptable, HttpEntity(`application/json`, NotAcceptableFailure)))
@@ -183,7 +170,7 @@ class CopySpec extends CoreSpec with Inside {
     it("should propagate bad request failures") {
       val probe = ioProbe
 
-      val response = dropbox copy (probe ref, to_path = CopyToPath, from_path = Some(CopyFromPath))
+      val response = dropbox move (probe ref, to_path = MoveToPath, from_path = MoveFromPath)
 
       probe expectMsgClass classOf[HttpRequest]
       probe reply (HttpResponse(BadRequest, HttpEntity(`application/json`, BadRequestFailure)))

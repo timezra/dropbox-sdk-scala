@@ -310,7 +310,9 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       actualContents should be(theFirstChunk + theSecondChunk)
       // TODO: Delete the file from Dropbox
     }
+  }
 
+  feature("File operations") {
     scenario("Copies a file") {
       Given("A file in Dropbox") // TODO: upload the file to Dropbox
       val copyFromPath = "test.txt"
@@ -372,6 +374,29 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       response.bytes should be(0)
       response.path should be(s"/$path")
       response.is_dir should be(false)
+    }
+
+    scenario("Moves a file") {
+      import Implicits._
+
+      Given("A file in Dropbox")
+      val moveFromPath = UUID.randomUUID().toString
+      val contents = "Dropbox SDK Scala Test.\n"
+      Await result (dropbox putFile (path = moveFromPath, contents = contents, length = contents length), 3 seconds)
+
+      When("A user moves it")
+      val moveToPath = UUID.randomUUID().toString
+      Await result (dropbox move (from_path = moveFromPath, to_path = moveToPath), 3 seconds)
+
+      Then("The file should no longer exist at the original location")
+      val moveFromMetadata = (Await result (dropbox metadata (path = moveFromPath), 3 seconds)).right.get
+      val moveToMetadata = (Await result (dropbox metadata (path = moveToPath), 3 seconds)).right.get
+      moveFromMetadata.bytes should be(0)
+      moveFromMetadata.path should be(s"/$moveFromPath")
+      moveToMetadata.bytes should be > 0L
+      moveToMetadata.path should be(s"/$moveToPath")
+
+      // TODO: Delete the file from Dropbox
     }
   }
 }
