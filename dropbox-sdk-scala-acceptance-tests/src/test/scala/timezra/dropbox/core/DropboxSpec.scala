@@ -16,6 +16,7 @@ import java.util.UUID
 import org.scalatest.Inside
 import java.util.Date
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
 
 @RunWith(classOf[JUnitRunner])
 class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll with Matchers with Inside {
@@ -47,68 +48,78 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
 
   feature("Files and metadata") {
     scenario("Gets a file") {
-      Given("A file in Dropbox") // TODO: upload the file to Dropbox
-      val expectedContents = "Dropbox SDK Scala Test.\n"
-      val path = "test.txt"
+      Given("A file in Dropbox")
+      withDropboxFile {
+        (path, contents) ⇒
+          {
+            When("A user downloads it")
+            val response = Await result (dropbox getFile (path = path), 3 seconds)
 
-      When("A user downloads it")
-      val response = Await result (dropbox getFile (path = path), 3 seconds)
-
-      Then("She should get its contents")
-      val actualContents = response._2.foldLeft("")(_ + _.asString)
-      actualContents should be(expectedContents)
-      And("Its metadata")
-      val contentMetadata = response._1
-      contentMetadata.is_dir should be(false)
-      contentMetadata.bytes should be > 0L
-      contentMetadata.path should be(s"/$path")
+            Then("She should get its contents")
+            val actualContents = response._2.foldLeft("")(_ + _.asString)
+            actualContents should be(contents)
+            And("Its metadata")
+            val contentMetadata = response._1
+            contentMetadata.is_dir should be(false)
+            contentMetadata.bytes should be > 0L
+            contentMetadata.path should be(s"/$path")
+          }
+      }
     }
 
     scenario("Puts a file") {
-      import Implicits._
-
       Given("Some file contents")
       val expectedContents = "Dropbox SDK Scala Test.\n"
-      val path = "test.txt"
 
       When("A user puts them in Dropbox")
-      Await result (dropbox putFile (path = path, contents = expectedContents, length = expectedContents length), 3 seconds)
+      withDropboxResource {
+        path ⇒
+          {
+            import Implicits._
+            Await result (dropbox putFile (path = path, contents = expectedContents, length = expectedContents length), 3 seconds)
 
-      Then("That file should be in Dropbox")
-      val response = Await result (dropbox getFile (path = path), 3 seconds)
-      val actualContents = response._2.foldLeft("")(_ + _.asString)
-      actualContents should be(expectedContents)
-      // TODO: Delete the file from Dropbox
+            Then("That file should be in Dropbox")
+            val response = Await result (dropbox getFile (path = path), 3 seconds)
+            val actualContents = response._2.foldLeft("")(_ + _.asString)
+            actualContents should be(expectedContents)
+          }
+      }
     }
 
     scenario("Posts a file") {
       Given("A local file")
       val expectedFile = new JFile("src/test/resources/application.conf")
       val path = ""
-      val expectedFilename = "test_post.txt"
 
       When("A user posts it to Dropbox")
-      Await result (dropbox postFile (path = path, file = expectedFile, filename = Some(expectedFilename)), 3 seconds)
+      withDropboxResource {
+        expectedFilename ⇒
+          {
+            Await result (dropbox postFile (path = path, file = expectedFile, filename = Some(expectedFilename)), 3 seconds)
 
-      Then("That file should be in Dropbox")
-      val response = Await result (dropbox getFile (path = s"$path/$expectedFilename"), 3 seconds)
-      val actualContents = response._2.foldLeft("")(_ + _.asString)
-      actualContents should be(new SFile(expectedFile).slurp)
-      // TODO: Delete the file from Dropbox
+            Then("That file should be in Dropbox")
+            val response = Await result (dropbox getFile (path = s"$path/$expectedFilename"), 3 seconds)
+            val actualContents = response._2.foldLeft("")(_ + _.asString)
+            actualContents should be(new SFile(expectedFile).slurp)
+          }
+      }
     }
 
     scenario("Gets File Metadata") {
-      Given("A file in Dropbox") // TODO: upload the file to Dropbox
-      val path = "test.txt"
+      Given("A file in Dropbox")
+      withDropboxFile {
+        (path, contents) ⇒
+          {
+            When("A user gets its metadata")
+            val response = Await result (dropbox metadata (path = path), 3 seconds)
 
-      When("A user gets its metadata")
-      val response = Await result (dropbox metadata (path = path), 3 seconds)
-
-      Then("She should receive them")
-      val contentMetadata = response.right.get
-      contentMetadata.is_dir should be(false)
-      contentMetadata.bytes should be > 0L
-      contentMetadata.path should be(s"/$path")
+            Then("She should receive them")
+            val contentMetadata = response.right.get
+            contentMetadata.is_dir should be(false)
+            contentMetadata.bytes should be > 0L
+            contentMetadata.path should be(s"/$path")
+          }
+      }
     }
 
     scenario("Gets Folder Metadata") {
@@ -141,8 +152,6 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
     }
 
     scenario("Gets A Longpoll Delta") {
-      import Implicits._
-
       Given("A cursor")
       val dropboxMetadata = (Await result (dropbox delta (path_prefix = Some("/")), 3 seconds))
 
@@ -150,140 +159,150 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       val longpoll_result = dropbox longpoll_delta (cursor = dropboxMetadata.cursor)
 
       And("Modifies the contents of the folder")
-      val path = UUID.randomUUID().toString
-      val contents = "Longpoll Delta Test"
-      Await result (dropbox putFile (path = path, contents = contents, length = contents length), 3 seconds)
-
-      Then("The user should get an indication that the folder contents have changed")
-      val longpollMetadata = Await result (longpoll_result, 3 seconds)
-      longpollMetadata.changes should be(true)
-
-      // TODO: Delete the file from Dropbox
+      withDropboxFile {
+        (path, contents) ⇒
+          {
+            Then("The user should get an indication that the folder contents have changed")
+            val longpollMetadata = Await result (longpoll_result, 3 seconds)
+            longpollMetadata.changes should be(true)
+          }
+      }
     }
 
     scenario("Gets Revisions") {
-      Given("A file in Dropbox") // TODO: upload the file to Dropbox
-      val filePath = "test.txt"
+      Given("A file in Dropbox")
+      withDropboxFile {
+        (path, contents) ⇒
+          {
+            When("A user gets its revisions")
+            val revisions = Await result (dropbox revisions (path = path), 3 seconds)
 
-      When("A user gets its revisions")
-      val revisions = Await result (dropbox revisions (path = filePath), 3 seconds)
-
-      Then("She should receive them")
-      revisions.size should be > 0
-      revisions.foreach(revision ⇒
-        inside(revision) {
-          case ContentMetadata(_, bytes, path, is_dir, _, _, _, _, _, _, _, _, _, _, _) ⇒
-            bytes should be >= 0L
-            is_dir should be(false)
-            path should be(s"/$filePath")
-        }
-      )
+            Then("She should receive them")
+            revisions.size should be > 0
+            revisions.foreach(revision ⇒
+              inside(revision) {
+                case ContentMetadata(_, bytes, filePath, is_dir, _, _, _, _, _, _, _, _, _, _, _) ⇒
+                  bytes should be >= 0L
+                  is_dir should be(false)
+                  filePath should be(s"/$path")
+              }
+            )
+          }
+      }
     }
 
     scenario("Restores a File to a Previous Revision") {
-      import Implicits._
-
       Given("A file in Dropbox")
-      val path = UUID.randomUUID().toString
-      val originalContents = "Original Contents"
-      Await result (dropbox putFile (path = path, contents = originalContents, length = originalContents length), 3 seconds)
+      withDropboxFile {
+        (path, contents) ⇒
+          {
+            import Implicits._
 
-      When("A user changes it")
-      val newContents = "New Contents"
-      Await result (dropbox putFile (path = path, contents = newContents, length = newContents length), 3 seconds)
+            When("A user changes it")
+            val newContents = "New Contents"
+            Await result (dropbox putFile (path = path, contents = newContents, length = newContents length), 3 seconds)
 
-      And("Restores it to the previous revision")
-      val revisions = Await result (dropbox revisions (path = path), 3 seconds)
-      val theFirstRevision = revisions.last
-      val revision = theFirstRevision.revision.get
-      val rev = theFirstRevision.rev.get
-      val contentMetadata: ContentMetadata = Await result (dropbox restore (path = path, rev = rev), 3 seconds)
+            And("Restores it to the previous revision")
+            val revisions = Await result (dropbox revisions (path = path), 3 seconds)
+            val theFirstRevision = revisions.last
+            val revision = theFirstRevision.revision.get
+            val rev = theFirstRevision.rev.get
+            val contentMetadata: ContentMetadata = Await result (dropbox restore (path = path, rev = rev), 3 seconds)
 
-      Then("It should have its original content")
-      contentMetadata.revision.get should be > revision
-      val response = Await result (dropbox getFile (path = path), 3 seconds)
-      val actualContents = response._2.foldLeft("")(_ + _.asString)
-      actualContents should be(originalContents)
-
-      // TODO: delete the file from Dropbox
+            Then("It should have its original content")
+            contentMetadata.revision.get should be > revision
+            val response = Await result (dropbox getFile (path = path), 3 seconds)
+            val actualContents = response._2.foldLeft("")(_ + _.asString)
+            actualContents should be(contents)
+          }
+      }
     }
 
     scenario("Searches For Matching Files") {
-      import Implicits._
+      Given("A file in Dropbox")
+      withDropboxFile {
+        (path, contents) ⇒
+          {
+            And("A query that matches the file")
+            val query = path.substring(2, 6)
 
-      Given("A query")
-      val query = ".search_test"
+            When("A user searches with the query")
+            val metadata = Await result (dropbox search (query = query), 3 seconds)
 
-      And("A file that matches the query")
-      val path = UUID.randomUUID().toString + query
-      val contents = "Search Test"
-      Await result (dropbox putFile (path = path, contents = contents, length = contents length), 3 seconds)
-
-      When("A user searches with the query")
-      val metadata = Await result (dropbox search (query = query), 3 seconds)
-
-      Then("She should get metadata for any matching files")
-      metadata.size should be > 0
-      metadata.foreach(metadatum ⇒
-        inside(metadatum) {
-          case ContentMetadata(_, bytes, path, is_dir, _, _, _, _, _, _, _, _, _, _, _) ⇒
-            path should include(query)
-        }
-      )
-
-      // TODO: delete the files from Dropbox
+            Then("She should get metadata for any matching files")
+            metadata.size should be > 0
+            metadata.foreach(metadatum ⇒
+              inside(metadatum) {
+                case ContentMetadata(_, bytes, path, is_dir, _, _, _, _, _, _, _, _, _, _, _) ⇒
+                  path should include(query)
+              }
+            )
+          }
+      }
     }
 
     scenario("Shares A File") {
-      Given("A file in Dropbox") // TODO: upload the file to Dropbox
-      val path = "test.txt"
+      Given("A file in Dropbox")
+      withDropboxFile {
+        (path, contents) ⇒
+          {
+            When("A user shares it")
+            val sharesLinkWithExpiry = Await result (dropbox shares (path = path), 3 seconds)
 
-      When("A user shares it")
-      val sharesLinkWithExpiry = Await result (dropbox shares (path = path), 3 seconds)
-
-      Then("She should get a url and expiration date for it")
-      sharesLinkWithExpiry.url should not be (null)
-      sharesLinkWithExpiry.expires should be > new Date()
+            Then("She should get a url and expiration date for it")
+            sharesLinkWithExpiry.url should not be (null)
+            sharesLinkWithExpiry.expires should be > new Date()
+          }
+      }
     }
 
     scenario("Asks For A Media Link") {
-      Given("A file in Dropbox") // TODO: upload the file to Dropbox
-      val path = "test.txt"
+      Given("A file in Dropbox")
+      withDropboxFile {
+        (path, contents) ⇒
+          {
+            When("A user asks for a media link to it")
+            val mediaLinkWithExpiry = Await result (dropbox media (path = path), 3 seconds)
 
-      When("A user asks for a media link to it")
-      val mediaLinkWithExpiry = Await result (dropbox media (path = path), 3 seconds)
-
-      Then("She should get a url and expiration date for it")
-      mediaLinkWithExpiry.url should not be (null)
-      mediaLinkWithExpiry.expires should be > new Date()
+            Then("She should get a url and expiration date for it")
+            mediaLinkWithExpiry.url should not be (null)
+            mediaLinkWithExpiry.expires should be > new Date()
+          }
+      }
     }
 
     scenario("Asks For A Copy Reference") {
-      Given("A file in Dropbox") // TODO: upload the file to Dropbox
-      val path = "test.txt"
+      Given("A file in Dropbox")
+      withDropboxFile {
+        (path, contents) ⇒
+          {
+            When("A user asks for a reference to copy it")
+            val referenceWithExpiry = Await result (dropbox copy_ref (path = path), 3 seconds)
 
-      When("A user asks for a reference to copy it")
-      val referenceWithExpiry = Await result (dropbox copy_ref (path = path), 3 seconds)
-
-      Then("She should get an id and expiration date for it")
-      referenceWithExpiry.copy_ref should not be (null)
-      referenceWithExpiry.expires should be > new Date()
+            Then("She should get an id and expiration date for it")
+            referenceWithExpiry.copy_ref should not be (null)
+            referenceWithExpiry.expires should be > new Date()
+          }
+      }
     }
 
     scenario("Asks For A Thumbnail") {
-      Given("A picture in Dropbox") // TODO: upload the file to Dropbox
-      val path = "test.png"
+      Given("A picture in Dropbox")
+      withDropboxPicture({
+        (path) ⇒
+          {
+            When("A user asks for a thumbnail of it")
+            val response = Await result (dropbox thumbnails (path = path), 3 seconds)
 
-      When("A user asks for a thumbnail of it")
-      val response = Await result (dropbox thumbnails (path = path), 3 seconds)
-
-      Then("She should get its contents")
-      val actualContents: ArrayBuffer[Byte] = response._2.foldLeft(new ArrayBuffer[Byte]())(_ ++= _.toByteArray)
-      actualContents.length should be > 0
-      And("Its metadata")
-      val contentMetadata = response._1
-      contentMetadata.is_dir should be(false)
-      contentMetadata.bytes should be > 0L
+            Then("She should get its contents")
+            val actualContents: ArrayBuffer[Byte] = response._2.foldLeft(new ArrayBuffer[Byte]())(_ ++= _.toByteArray)
+            actualContents.length should be > 0
+            And("Its metadata")
+            val contentMetadata = response._1
+            contentMetadata.is_dir should be(false)
+            contentMetadata.bytes should be > 0L
+          }
+      }, Some("png"))
     }
 
     scenario("Uploads a file in chunks") {
@@ -292,7 +311,6 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       Given("Some file contents")
       val theFirstChunk = "Dropbox SDK"
       val theSecondChunk = " Scala Test.\n"
-      val path = "test_chunk.txt"
 
       When("A user uploads part of the file")
       val response = Await result (dropbox chunked_upload (contents = theFirstChunk), 3 seconds)
@@ -303,100 +321,152 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       Await result (dropbox chunked_upload (contents = theSecondChunk, idAndOffset = Some(uploadId, offset)), 3 seconds)
 
       And("Commits the file upload")
-      Await result (dropbox commit_chunked_upload (path = path, upload_id = uploadId), 3 seconds)
+      withDropboxResource {
+        path ⇒
+          {
+            Await result (dropbox commit_chunked_upload (path = path, upload_id = uploadId), 3 seconds)
 
-      Then("That file should be in Dropbox")
-      val actualContents = (Await result (dropbox getFile (path = path), 3 seconds))._2.foldLeft("")(_ + _.asString)
-      actualContents should be(theFirstChunk + theSecondChunk)
-      // TODO: Delete the file from Dropbox
+            Then("That file should be in Dropbox")
+            val actualContents = (Await result (dropbox getFile (path = path), 3 seconds))._2.foldLeft("")(_ + _.asString)
+            actualContents should be(theFirstChunk + theSecondChunk)
+          }
+      }
     }
   }
 
   feature("File operations") {
     scenario("Copies a file") {
-      Given("A file in Dropbox") // TODO: upload the file to Dropbox
-      val copyFromPath = "test.txt"
+      Given("A file in Dropbox")
+      withDropboxFile {
+        (copyFromPath, contents) ⇒
+          {
+            When("A user copies it")
+            withDropboxResource {
+              copyToPath ⇒
+                {
+                  Await result (dropbox copy (to_path = copyToPath, from_path = Some(copyFromPath)), 3 seconds)
 
-      When("A user copies it")
-      val copyToPath = UUID.randomUUID().toString + "_copy.txt"
-      Await result (dropbox copy (to_path = copyToPath, from_path = Some(copyFromPath)), 3 seconds)
-
-      Then("The copied file should be the same as the original")
-      val originalContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
-      val copiedContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
-      copiedContents should be(originalContents)
-      // TODO: Delete the file from Dropbox
+                  Then("The copied file should be the same as the original")
+                  val originalContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
+                  val copiedContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
+                  copiedContents should be(originalContents)
+                }
+            }
+          }
+      }
     }
 
     scenario("Copies a file from a reference") {
-      Given("A reference to a file in Dropbox") // TODO: upload the file to Dropbox
-      val copyFromPath = "test.txt"
-      val referenceWithExpiry = Await result (dropbox copy_ref (path = copyFromPath), 3 seconds)
+      Given("A reference to a file in Dropbox")
+      withDropboxFile {
+        (copyFromPath, contents) ⇒
+          {
+            val referenceWithExpiry = Await result (dropbox copy_ref (path = copyFromPath), 3 seconds)
 
-      When("A user copies it")
-      val copyToPath = UUID.randomUUID().toString + "_copy.txt"
-      Await result (dropbox copy (to_path = copyToPath, from_copy_ref = Some(referenceWithExpiry.copy_ref)), 3 seconds)
+            When("A user copies it")
+            withDropboxResource {
+              copyToPath ⇒
+                {
+                  Await result (dropbox copy (to_path = copyToPath, from_copy_ref = Some(referenceWithExpiry.copy_ref)), 3 seconds)
 
-      Then("The copied file should be the same as the original")
-      val originalContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
-      val copiedContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
-      copiedContents should be(originalContents)
-      // TODO: Delete the file from Dropbox
+                  Then("The copied file should be the same as the original")
+                  val originalContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
+                  val copiedContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
+                  copiedContents should be(originalContents)
+                }
+            }
+          }
+      }
     }
 
     scenario("Creates a folder") {
-      Given("A Dropbox root folder")
+      withDropboxResource {
+        path ⇒
+          {
+            Given("A Dropbox root folder")
 
-      When("A user creates a folder relative to it")
-      val path = UUID.randomUUID().toString
-      val response = Await result (dropbox create_folder (path = path), 3 seconds)
+            When("A user creates a folder relative to it")
+            val response = Await result (dropbox create_folder (path = path), 3 seconds)
 
-      Then("The folder should exist")
-      response.is_dir should be(true)
-      response.path should be(s"/$path")
-      response.contents.isDefined should be(false)
-      // TODO: Delete the folder from Dropbox
+            Then("The folder should exist")
+            response.is_dir should be(true)
+            response.path should be(s"/$path")
+            response.contents.isDefined should be(false)
+          }
+      }
     }
 
     scenario("Deletes a file") {
-      import Implicits._
-
       Given("A file in Dropbox")
-      val path = UUID.randomUUID().toString
-      val contents = "Dropbox SDK Scala Test.\n"
-      Await result (dropbox putFile (path = path, contents = contents, length = contents length), 3 seconds)
+      withDropboxFile {
+        (path, contents) ⇒
+          {
+            When("A user deletes it")
+            val response = Await result (dropbox delete (path = path), 3 seconds)
 
-      When("A user deletes it")
-      val response = Await result (dropbox delete (path = path), 3 seconds)
-
-      Then("The file should no longer exist")
-      response.is_deleted.get should be(true)
-      response.bytes should be(0)
-      response.path should be(s"/$path")
-      response.is_dir should be(false)
+            Then("The file should no longer exist")
+            response.is_deleted.get should be(true)
+            response.bytes should be(0)
+            response.path should be(s"/$path")
+            response.is_dir should be(false)
+          }
+      }
     }
 
     scenario("Moves a file") {
-      import Implicits._
-
       Given("A file in Dropbox")
-      val moveFromPath = UUID.randomUUID().toString
-      val contents = "Dropbox SDK Scala Test.\n"
-      Await result (dropbox putFile (path = moveFromPath, contents = contents, length = contents length), 3 seconds)
+      withDropboxFile {
+        (moveFromPath, contents) ⇒
+          {
+            When("A user moves it")
+            withDropboxResource {
+              moveToPath ⇒
+                {
+                  Await result (dropbox move (from_path = moveFromPath, to_path = moveToPath), 3 seconds)
 
-      When("A user moves it")
-      val moveToPath = UUID.randomUUID().toString
-      Await result (dropbox move (from_path = moveFromPath, to_path = moveToPath), 3 seconds)
-
-      Then("The file should no longer exist at the original location")
-      val moveFromMetadata = (Await result (dropbox metadata (path = moveFromPath), 3 seconds)).right.get
-      val moveToMetadata = (Await result (dropbox metadata (path = moveToPath), 3 seconds)).right.get
-      moveFromMetadata.bytes should be(0)
-      moveFromMetadata.path should be(s"/$moveFromPath")
-      moveToMetadata.bytes should be > 0L
-      moveToMetadata.path should be(s"/$moveToPath")
-
-      // TODO: Delete the file from Dropbox
+                  Then("The file should no longer exist at the original location")
+                  val moveFromMetadata = (Await result (dropbox metadata (path = moveFromPath), 3 seconds)).right.get
+                  val moveToMetadata = (Await result (dropbox metadata (path = moveToPath), 3 seconds)).right.get
+                  moveFromMetadata.bytes should be(0)
+                  moveFromMetadata.path should be(s"/$moveFromPath")
+                  moveToMetadata.bytes should be > 0L
+                  moveToMetadata.path should be(s"/$moveToPath")
+                }
+            }
+          }
+      }
     }
+  }
+
+  private def withDropboxResource(test: String ⇒ Unit, extension: Option[String] = None) {
+    import scala.util.control.Exception._
+    val path = Seq(Some(UUID.randomUUID().toString), extension).flatMap(f ⇒ f).mkString(".")
+
+    ultimately(dropbox delete (path = path)) apply test(path)
+  }
+
+  private def withDropboxFile(test: (String, String) ⇒ Unit, extension: Option[String] = None) {
+    withDropboxResource({
+      path ⇒
+        {
+          import Implicits._
+          val contents = "Dropbox SDK Scala Test.\n"
+          Await result (dropbox putFile (path = path, contents = contents, length = contents length), 3 seconds)
+          test(path, contents)
+        }
+    }, extension)
+  }
+
+  private def withDropboxPicture(test: (String) ⇒ Unit, extension: Option[String] = None) {
+    withDropboxResource({
+      path ⇒
+        {
+          val pictureFile = new JFile("src/test/resources/test.png")
+          val root = ""
+          Await result (dropbox postFile (path = root, file = pictureFile, filename = Some(path)), 3 seconds)
+
+          test(path)
+        }
+    }, extension)
   }
 }
