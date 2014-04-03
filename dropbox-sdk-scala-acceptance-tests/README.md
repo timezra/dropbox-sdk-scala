@@ -15,7 +15,7 @@ Then (very quickly), from a commandline, request an ACCESS\_TOKEN using this com
 
 In order to run these tests, you must create a file called config/dev.properties. This file contains the following 2 entries:
 
-    client_identifier=APPLICATION_IDENTIFIER
-    access_token=ACCESS_TOKEN
+    clientIdentifier=APPLICATION_IDENTIFIER
+    accessToken=ACCESS_TOKEN
 
 Where the APPLICATION\_IDENTIFIER looks like "YOUR DROPBOX APPLICATION NAME/1.0" and the ACCESS\_TOKEN is the ACCESS\_TOKEN you requested above.
