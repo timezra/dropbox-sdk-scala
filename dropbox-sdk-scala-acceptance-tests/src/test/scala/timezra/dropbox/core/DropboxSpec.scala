@@ -37,7 +37,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       Given("An existing user")
 
       When("She requests her account info")
-      val accountInfo = Await result (dropbox accountInfo (), 3 seconds)
+      val accountInfo = Await result (dropbox accountInfo (), 5 seconds)
 
       Then("She should receive it")
       accountInfo.uid should be > 0L
@@ -53,7 +53,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         (path, contents) ⇒
           {
             When("A user downloads it")
-            val response = Await result (dropbox getFile (path = path), 3 seconds)
+            val response = Await result (dropbox getFile (path = path), 5 seconds)
 
             Then("She should get its contents")
             val actualContents = response._2.foldLeft("")(_ + _.asString)
@@ -76,10 +76,10 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         path ⇒
           {
             import Implicits._
-            Await result (dropbox putFile (path = path, contents = expectedContents, length = expectedContents length), 3 seconds)
+            Await result (dropbox putFile (path = path, contents = expectedContents, length = expectedContents length), 5 seconds)
 
             Then("That file should be in Dropbox")
-            val response = Await result (dropbox getFile (path = path), 3 seconds)
+            val response = Await result (dropbox getFile (path = path), 5 seconds)
             val actualContents = response._2.foldLeft("")(_ + _.asString)
             actualContents should be(expectedContents)
           }
@@ -95,10 +95,10 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       withDropboxResource {
         expectedFilename ⇒
           {
-            Await result (dropbox postFile (path = path, file = expectedFile, filename = Some(expectedFilename)), 3 seconds)
+            Await result (dropbox postFile (path = path, file = expectedFile, filename = Some(expectedFilename)), 5 seconds)
 
             Then("That file should be in Dropbox")
-            val response = Await result (dropbox getFile (path = s"$path/$expectedFilename"), 3 seconds)
+            val response = Await result (dropbox getFile (path = s"$path/$expectedFilename"), 5 seconds)
             val actualContents = response._2.foldLeft("")(_ + _.asString)
             actualContents should be(new SFile(expectedFile).slurp)
           }
@@ -111,7 +111,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         (path, contents) ⇒
           {
             When("A user gets its metadata")
-            val response = Await result (dropbox metadata (path = path), 3 seconds)
+            val response = Await result (dropbox metadata (path = path), 5 seconds)
 
             Then("She should receive them")
             val contentMetadata = response.right.get
@@ -127,7 +127,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       val path = ""
 
       When("A user gets its metadata")
-      val response = Await result (dropbox metadata (path = path), 3 seconds)
+      val response = Await result (dropbox metadata (path = path), 5 seconds)
 
       Then("She should receive them")
       val contentMetadata = response.right.get
@@ -142,7 +142,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       val path_prefix = "/"
 
       When("A user asks for its delta")
-      val deltaMetadata = Await result (dropbox delta (path_prefix = Some(path_prefix)), 3 seconds)
+      val deltaMetadata = Await result (dropbox delta (path_prefix = Some(path_prefix)), 5 seconds)
 
       Then("She should receive it")
       deltaMetadata.entries should not be (null)
@@ -153,7 +153,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
 
     scenario("Gets A Longpoll Delta") {
       Given("A cursor")
-      val dropboxMetadata = (Await result (dropbox delta (path_prefix = Some("/")), 3 seconds))
+      val dropboxMetadata = (Await result (dropbox delta (path_prefix = Some("/")), 5 seconds))
 
       When("A user polls for a change")
       val longpoll_result = dropbox longpoll_delta (cursor = dropboxMetadata.cursor)
@@ -163,7 +163,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         (path, contents) ⇒
           {
             Then("The user should get an indication that the folder contents have changed")
-            val longpollMetadata = Await result (longpoll_result, 3 seconds)
+            val longpollMetadata = Await result (longpoll_result, 5 seconds)
             longpollMetadata.changes should be(true)
           }
       }
@@ -175,7 +175,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         (path, contents) ⇒
           {
             When("A user gets its revisions")
-            val revisions = Await result (dropbox revisions (path = path), 3 seconds)
+            val revisions = Await result (dropbox revisions (path = path), 5 seconds)
 
             Then("She should receive them")
             revisions.size should be > 0
@@ -200,18 +200,18 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
 
             When("A user changes it")
             val newContents = "New Contents"
-            Await result (dropbox putFile (path = path, contents = newContents, length = newContents length), 3 seconds)
+            Await result (dropbox putFile (path = path, contents = newContents, length = newContents length), 5 seconds)
 
             And("Restores it to the previous revision")
-            val revisions = Await result (dropbox revisions (path = path), 3 seconds)
+            val revisions = Await result (dropbox revisions (path = path), 5 seconds)
             val theFirstRevision = revisions.last
             val revision = theFirstRevision.revision.get
             val rev = theFirstRevision.rev.get
-            val contentMetadata: ContentMetadata = Await result (dropbox restore (path = path, rev = rev), 3 seconds)
+            val contentMetadata: ContentMetadata = Await result (dropbox restore (path = path, rev = rev), 5 seconds)
 
             Then("It should have its original content")
             contentMetadata.revision.get should be > revision
-            val response = Await result (dropbox getFile (path = path), 3 seconds)
+            val response = Await result (dropbox getFile (path = path), 5 seconds)
             val actualContents = response._2.foldLeft("")(_ + _.asString)
             actualContents should be(contents)
           }
@@ -227,7 +227,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
             val query = path.substring(2, 6)
 
             When("A user searches with the query")
-            val metadata = Await result (dropbox search (query = query), 3 seconds)
+            val metadata = Await result (dropbox search (query = query), 5 seconds)
 
             Then("She should get metadata for any matching files")
             metadata.size should be > 0
@@ -247,7 +247,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         (path, contents) ⇒
           {
             When("A user shares it")
-            val sharesLinkWithExpiry = Await result (dropbox shares (path = path), 3 seconds)
+            val sharesLinkWithExpiry = Await result (dropbox shares (path = path), 5 seconds)
 
             Then("She should get a url and expiration date for it")
             sharesLinkWithExpiry.url should not be (null)
@@ -262,7 +262,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         (path, contents) ⇒
           {
             When("A user asks for a media link to it")
-            val mediaLinkWithExpiry = Await result (dropbox media (path = path), 3 seconds)
+            val mediaLinkWithExpiry = Await result (dropbox media (path = path), 5 seconds)
 
             Then("She should get a url and expiration date for it")
             mediaLinkWithExpiry.url should not be (null)
@@ -277,7 +277,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         (path, contents) ⇒
           {
             When("A user asks for a reference to copy it")
-            val referenceWithExpiry = Await result (dropbox copy_ref (path = path), 3 seconds)
+            val referenceWithExpiry = Await result (dropbox copy_ref (path = path), 5 seconds)
 
             Then("She should get an id and expiration date for it")
             referenceWithExpiry.copy_ref should not be (null)
@@ -292,7 +292,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         (path) ⇒
           {
             When("A user asks for a thumbnail of it")
-            val response = Await result (dropbox thumbnails (path = path), 3 seconds)
+            val response = Await result (dropbox thumbnails (path = path), 5 seconds)
 
             Then("She should get its contents")
             val actualContents: ArrayBuffer[Byte] = response._2.foldLeft(new ArrayBuffer[Byte]())(_ ++= _.toByteArray)
@@ -313,21 +313,21 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       val theSecondChunk = " Scala Test.\n"
 
       When("A user uploads part of the file")
-      val response = Await result (dropbox chunked_upload (contents = theFirstChunk), 3 seconds)
+      val response = Await result (dropbox chunked_upload (contents = theFirstChunk), 5 seconds)
 
       And("Uploads the rest of the file")
       val uploadId = response.upload_id
       val offset = response.offset
-      Await result (dropbox chunked_upload (contents = theSecondChunk, idAndOffset = Some(uploadId, offset)), 3 seconds)
+      Await result (dropbox chunked_upload (contents = theSecondChunk, idAndOffset = Some(uploadId, offset)), 5 seconds)
 
       And("Commits the file upload")
       withDropboxResource {
         path ⇒
           {
-            Await result (dropbox commit_chunked_upload (path = path, upload_id = uploadId), 3 seconds)
+            Await result (dropbox commit_chunked_upload (path = path, upload_id = uploadId), 5 seconds)
 
             Then("That file should be in Dropbox")
-            val actualContents = (Await result (dropbox getFile (path = path), 3 seconds))._2.foldLeft("")(_ + _.asString)
+            val actualContents = (Await result (dropbox getFile (path = path), 5 seconds))._2.foldLeft("")(_ + _.asString)
             actualContents should be(theFirstChunk + theSecondChunk)
           }
       }
@@ -344,11 +344,11 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
             withDropboxResource {
               copyToPath ⇒
                 {
-                  Await result (dropbox copy (to_path = copyToPath, from_path = Some(copyFromPath)), 3 seconds)
+                  Await result (dropbox copy (to_path = copyToPath, from_path = Some(copyFromPath)), 5 seconds)
 
                   Then("The copied file should be the same as the original")
-                  val originalContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
-                  val copiedContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
+                  val originalContents = (Await result (dropbox getFile (path = copyFromPath), 5 seconds))._2.foldLeft("")(_ + _.asString)
+                  val copiedContents = (Await result (dropbox getFile (path = copyFromPath), 5 seconds))._2.foldLeft("")(_ + _.asString)
                   copiedContents should be(originalContents)
                 }
             }
@@ -361,17 +361,17 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
       withDropboxFile {
         (copyFromPath, contents) ⇒
           {
-            val referenceWithExpiry = Await result (dropbox copy_ref (path = copyFromPath), 3 seconds)
+            val referenceWithExpiry = Await result (dropbox copy_ref (path = copyFromPath), 5 seconds)
 
             When("A user copies it")
             withDropboxResource {
               copyToPath ⇒
                 {
-                  Await result (dropbox copy (to_path = copyToPath, from_copy_ref = Some(referenceWithExpiry.copy_ref)), 3 seconds)
+                  Await result (dropbox copy (to_path = copyToPath, from_copy_ref = Some(referenceWithExpiry.copy_ref)), 5 seconds)
 
                   Then("The copied file should be the same as the original")
-                  val originalContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
-                  val copiedContents = (Await result (dropbox getFile (path = copyFromPath), 3 seconds))._2.foldLeft("")(_ + _.asString)
+                  val originalContents = (Await result (dropbox getFile (path = copyFromPath), 5 seconds))._2.foldLeft("")(_ + _.asString)
+                  val copiedContents = (Await result (dropbox getFile (path = copyFromPath), 5 seconds))._2.foldLeft("")(_ + _.asString)
                   copiedContents should be(originalContents)
                 }
             }
@@ -386,7 +386,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
             Given("A Dropbox root folder")
 
             When("A user creates a folder relative to it")
-            val response = Await result (dropbox create_folder (path = path), 3 seconds)
+            val response = Await result (dropbox create_folder (path = path), 5 seconds)
 
             Then("The folder should exist")
             response.is_dir should be(true)
@@ -402,7 +402,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         (path, contents) ⇒
           {
             When("A user deletes it")
-            val response = Await result (dropbox delete (path = path), 3 seconds)
+            val response = Await result (dropbox delete (path = path), 5 seconds)
 
             Then("The file should no longer exist")
             response.is_deleted.get should be(true)
@@ -422,11 +422,11 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
             withDropboxResource {
               moveToPath ⇒
                 {
-                  Await result (dropbox move (from_path = moveFromPath, to_path = moveToPath), 3 seconds)
+                  Await result (dropbox move (from_path = moveFromPath, to_path = moveToPath), 5 seconds)
 
                   Then("The file should no longer exist at the original location")
-                  val moveFromMetadata = (Await result (dropbox metadata (path = moveFromPath), 3 seconds)).right.get
-                  val moveToMetadata = (Await result (dropbox metadata (path = moveToPath), 3 seconds)).right.get
+                  val moveFromMetadata = (Await result (dropbox metadata (path = moveFromPath), 5 seconds)).right.get
+                  val moveToMetadata = (Await result (dropbox metadata (path = moveToPath), 5 seconds)).right.get
                   moveFromMetadata.bytes should be(0)
                   moveFromMetadata.path should be(s"/$moveFromPath")
                   moveToMetadata.bytes should be > 0L
@@ -451,7 +451,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         {
           import Implicits._
           val contents = "Dropbox SDK Scala Test.\n"
-          Await result (dropbox putFile (path = path, contents = contents, length = contents length), 3 seconds)
+          Await result (dropbox putFile (path = path, contents = contents, length = contents length), 5 seconds)
           test(path, contents)
         }
     }, extension)
@@ -463,7 +463,7 @@ class DropboxSpec extends FeatureSpec with GivenWhenThen with BeforeAndAfterAll 
         {
           val pictureFile = new JFile("src/test/resources/test.png")
           val root = ""
-          Await result (dropbox postFile (path = root, file = pictureFile, filename = Some(path)), 3 seconds)
+          Await result (dropbox postFile (path = root, file = pictureFile, filename = Some(path)), 5 seconds)
 
           test(path)
         }
