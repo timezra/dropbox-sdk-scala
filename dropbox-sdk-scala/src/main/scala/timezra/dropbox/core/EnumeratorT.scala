@@ -7,6 +7,7 @@ import scalaz.effect.IoExceptionOr
 import scalaz.effect.IO
 import scalaz.iteratee.StepT
 import scalaz.iteratee.Iteratee.elInput
+import java.io.File
 
 object EnumeratorT extends EnumeratorTFunctions
 
@@ -33,5 +34,10 @@ object Implicits {
     import EnumeratorT._
     import java.io.ByteArrayInputStream
     enumInputStream[F](new ByteArrayInputStream(s getBytes))
+  }
+  implicit def file2Enum[F[_]](f: File)(implicit MO: MonadPartialOrder[F, IO]): E[IoExceptionOr[(Array[Byte], Int)], F] = {
+    import EnumeratorT._
+    import java.io.FileInputStream
+    enumInputStream[F](new FileInputStream(f))
   }
 }

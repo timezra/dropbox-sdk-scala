@@ -2,10 +2,10 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>timezra.dropbox</groupId>
-	<artifactId>dropbox-sdk-scala-acceptance-tests</artifactId>
+	<artifactId>dropbox-client</artifactId>
 	<packaging>jar</packaging>
 	<version>1.0.0-SNAPSHOT</version>
-	<name>Dropbox Scala SDK Acceptance Tests</name>
+	<name>Dropbox Scala Client</name>
 	<url>https://github.com/timezra/dropbox-sdk-scala</url>
 
 	<licenses>
@@ -22,7 +22,7 @@
 	</licenses>
 
 	<description>
-        A Scala library to access Dropbox's HTTP-based Core API. It is MIT licensed. These are its acceptance tests.
+        A Scala Client to access the Dropbox Scala SDK. It is MIT licensed.
     </description>
 
 	<organization>
@@ -50,14 +50,30 @@
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<scala.tools.version>2.11</scala.tools.version>
+		<scala.version>2.11.2</scala.version>
 		<maven.scala.plugin.version>2.15.2</maven.scala.plugin.version>
 	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.scala-lang</groupId>
+				<artifactId>scala-library</artifactId>
+				<version>${scala.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<dependencies>
 		<dependency>
 			<groupId>timezra.dropbox</groupId>
 			<artifactId>dropbox-sdk-scala</artifactId>
 			<version>1.0.0-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>org.scala-lang.plugins</groupId>
+			<artifactId>scala-continuations-library_2.11</artifactId>
+			<version>1.0.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.scalatest</groupId>
@@ -71,11 +87,23 @@
 			<version>4.11</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.scalamock</groupId>
+			<artifactId>scalamock-scalatest-support_2.11</artifactId>
+			<version>3.1.2</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
 		<sourceDirectory>src/main/scala</sourceDirectory>
 		<testSourceDirectory>src/test/scala</testSourceDirectory>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+			</resource>
+		</resources>
 		<testResources>
 			<testResource>
 				<directory>src/test/resources</directory>
@@ -96,11 +124,21 @@
 					</execution>
 				</executions>
 				<configuration>
+					<compilerPlugins>
+						<dependency>
+							<groupId>org.scala-lang.plugins</groupId>
+							<artifactId>scala-continuations-plugin_2.11.2</artifactId>
+							<version>1.0.2</version>
+						</dependency>
+					</compilerPlugins>
 					<sourceDir>src/main/scala</sourceDir>
 					<jvmArgs>
 						<jvmArg>-Xms512m</jvmArg>
 						<jvmArg>-Xmx1024m</jvmArg>
 					</jvmArgs>
+					<args>
+						<arg>-P:continuations:enable</arg>
+					</args>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -121,7 +159,7 @@
 				</configuration>
 				<executions>
 					<execution>
-						<id>integration-test</id>
+						<id>test</id>
 						<goals>
 							<goal>test</goal>
 						</goals>
@@ -150,4 +188,13 @@
 			</plugin>
 		</plugins>
 	</build>
+	<reporting>
+		<plugins>
+			<plugin>
+				<groupId>org.scala-tools</groupId>
+				<artifactId>maven-scala-plugin</artifactId>
+				<version>${maven.scala.plugin.version}</version>
+			</plugin>
+		</plugins>
+	</reporting>
 </project>

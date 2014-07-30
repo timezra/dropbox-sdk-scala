@@ -52,6 +52,7 @@
     <modules>
         <module>dropbox-sdk-scala</module>
         <module>dropbox-sdk-scala-acceptance-tests</module>
+        <module>dropbox-client</module>
     </modules>
 
 </project>
